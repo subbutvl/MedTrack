@@ -6,7 +6,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Chip, ChipGroup, Field, Input, ToggleRow } from '@/components/Form';
+import { Chip, ChipGroup, ChipRow, Field, Input, ToggleRow } from '@/components/Form';
 import { MEALS } from '@/components/MealTimesEditor';
 import { Screen } from '@/components/Screen';
 import {
@@ -174,7 +174,7 @@ export default function EditMedicationScreen() {
           options={(Object.keys(S.frequencies) as (keyof typeof S.frequencies)[]).map((k) => ({ value: k, label: S.frequencies[k] }))}
         />
         {draft.frequency === 'weekdays' ? (
-          <View style={styles.wrap}>
+          <ChipRow>
             {S.weekdays.map((label, day) => (
               <Chip
                 key={label}
@@ -185,7 +185,7 @@ export default function EditMedicationScreen() {
                 }
               />
             ))}
-          </View>
+          </ChipRow>
         ) : null}
         {draft.frequency === 'everyNDays' ? (
           <Input value={draft.everyN} onChangeText={(everyN) => patch({ everyN })} keyboardType="number-pad" accessibilityLabel={S.everyN} />
@@ -198,6 +198,7 @@ export default function EditMedicationScreen() {
             <Card key={i}>
               <View style={styles.slotHeader}>
                 <ChipGroup
+                  wrap
                   value={slot.kind}
                   onChange={(kind) =>
                     patchSlot(i, kind === 'meal' ? { ...newSlot(), amount: slot.amount } : ({ kind: 'clock', time: '09:00', amount: slot.amount } as SlotDraft))
@@ -222,12 +223,14 @@ export default function EditMedicationScreen() {
               {slot.kind === 'meal' ? (
                 <>
                   <ChipGroup
+                    wrap
                     value={slot.meal}
                     onChange={(meal) => patchSlot(i, { meal })}
                     options={MEALS.map((m) => ({ value: m, label: strings.meals[m] }))}
                   />
                   {slot.meal !== 'bedtime' ? (
                     <ChipGroup
+                      wrap
                       value={slot.relation}
                       onChange={(relation) => patchSlot(i, { relation })}
                       options={(['before', 'with', 'after'] as const).map((r) => ({ value: r, label: S.relation[r] }))}
@@ -368,7 +371,6 @@ export default function EditMedicationScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   slotHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   taperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   taperLabel: { width: 56 },

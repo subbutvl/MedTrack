@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Switch, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 
 import { fonts, radius, spacing, useTheme } from '@/theme';
 import { AppText } from './AppText';
@@ -51,22 +51,46 @@ export function Input({ multiline, ...props }: InputProps) {
   );
 }
 
-/** A row of mutually exclusive chips, used for meal, relation, frequency and similar choices. */
+/**
+ * A row of mutually exclusive chips, used for meal, relation, frequency and similar choices.
+ * The row scrolls sideways so it stays one line; pass `wrap` to let chips flow onto more lines.
+ */
 export function ChipGroup<T extends string | number>({
   options,
   value,
   onChange,
+  wrap,
 }: {
   options: { value: T; label: string }[];
   value: T | null;
   onChange: (v: T) => void;
+  wrap?: boolean;
 }) {
+  const chips = options.map((o) => (
+    <Chip key={String(o.value)} label={o.label} selected={o.value === value} onPress={() => onChange(o.value)} />
+  ));
+  if (wrap) {
+    return (
+      <View style={styles.chips} accessibilityRole="radiogroup">
+        {chips}
+      </View>
+    );
+  }
+  return <ChipRow accessibilityRole="radiogroup">{chips}</ChipRow>;
+}
+
+/** One line of chips that scrolls sideways when it doesn't fit. */
+export function ChipRow({ children, accessibilityRole }: { children: ReactNode; accessibilityRole?: 'radiogroup' }) {
   return (
-    <View style={styles.chips} accessibilityRole="radiogroup">
-      {options.map((o) => (
-        <Chip key={String(o.value)} label={o.label} selected={o.value === value} onPress={() => onChange(o.value)} />
-      ))}
-    </View>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      accessibilityRole={accessibilityRole}
+      contentContainerStyle={styles.chipRow}
+    >
+      {children}
+    </ScrollView>
   );
 }
 
@@ -118,6 +142,8 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 88, paddingTop: spacing.md, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Vertical padding keeps the chips' hitSlop and borders from being clipped by the scroll view.
+  chipRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs },
   chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minHeight: 36, justifyContent: 'center' },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
   flex: { flex: 1 },
