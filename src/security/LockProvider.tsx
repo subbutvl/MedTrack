@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { AppState, Modal } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { getLockConfig } from './lock';
+import { clearLockAfterReinstall, getLockConfig } from './lock';
 import { LockScreen } from './LockScreen';
 
 type LockContext = { refresh: () => Promise<void>; enabled: boolean };
@@ -29,6 +29,7 @@ export function LockProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      await clearLockAfterReinstall();
       const c = await getLockConfig();
       setEnabled(!!c);
       setBiometrics(!!c?.biometrics);

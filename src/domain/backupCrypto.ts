@@ -75,8 +75,9 @@ export async function openBackup(fileText: string, passphrase: string): Promise<
   if (env?.format !== BACKUP_FORMAT || !env.kdf || !env.ct) throw new BackupError('not_a_backup', 'This file is not a MedTrack backup.');
   if (env.v > BACKUP_VERSION) throw new BackupError('unsupported_version', 'This backup was made by a newer version of MedTrack.');
   const { N, r, p, salt } = env.kdf;
-  // Refuse absurd KDF settings so a crafted file can't hang the phone.
-  if (!(N >= 2 ** 10 && N <= 2 ** 20 && r >= 1 && r <= 16 && p >= 1 && p <= 4)) throw new BackupError('not_a_backup', 'This file is not a MedTrack backup.');
+  // Refuse KDF settings beyond a phone-safe cap (at most 64 MiB of scrypt memory, twice the work
+  // this app writes), so a crafted file can't stall or crash the phone.
+  if (!(N >= 2 ** 10 && N <= 2 ** 16 && r >= 1 && r <= 8 && p === 1)) throw new BackupError('not_a_backup', 'This file is not a MedTrack backup.');
   const key = await scryptAsync(enc.encode(passphrase), fromBase64(salt), { N, r, p, dkLen: 32 });
   try {
     return dec.decode(gcm(key, fromBase64(env.nonce)).decrypt(fromBase64(env.ct)));

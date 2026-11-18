@@ -1,4 +1,5 @@
 import * as Crypto from 'expo-crypto';
+import { File, Paths } from 'expo-file-system';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
@@ -18,6 +19,19 @@ export type LockConfig = {
 
 export const MAX_ATTEMPTS = 5;
 export const LOCKOUT_MS = 30_000;
+
+/**
+ * On iOS the Keychain keeps the PIN record after the app is uninstalled, so a reinstall would
+ * still ask for the forgotten PIN and block the restore screen. The app's documents folder is
+ * wiped on uninstall, so a missing marker file there means this is a fresh install: the old
+ * PIN record is cleared and the marker is written.
+ */
+export async function clearLockAfterReinstall() {
+  const marker = new File(Paths.document, 'medtrack-install');
+  if (marker.exists) return;
+  await SecureStore.deleteItemAsync(KEY);
+  await marker.write(String(Date.now()));
+}
 
 export async function getLockConfig(): Promise<LockConfig | null> {
   const raw = await SecureStore.getItemAsync(KEY);

@@ -23,6 +23,10 @@ describe('backup crypto', () => {
     await expect(openBackup(JSON.stringify({ ...env, ct: toBase64(ct) }), 'pass phrase')).rejects.toThrow(/Wrong passphrase/);
     await expect(openBackup('hello', 'x')).rejects.toThrow(/not a MedTrack backup/);
     await expect(openBackup(JSON.stringify({ ...env, v: 99 }), 'pass phrase')).rejects.toThrow(/newer version/);
+    // KDF settings past the phone-safe cap are refused before any scrypt work.
+    for (const kdf of [{ N: 2 ** 20 }, { r: 16 }, { p: 4 }]) {
+      await expect(openBackup(JSON.stringify({ ...env, kdf: { ...env.kdf, ...kdf } }), 'pass phrase')).rejects.toThrow(/not a MedTrack backup/);
+    }
   });
 
   it('hashes PINs with a salt and compares safely', async () => {
