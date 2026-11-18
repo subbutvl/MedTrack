@@ -24,9 +24,17 @@ export function nextCheckupDate(rule: CheckupRecurrence, visitDate: ISODate): IS
 
 export const CHECKUP_PRESETS = [1, 3, 6, 12] as const;
 
-/** First upcoming date for a new checkup. For a list of dates, it's the first one on or after today. */
-export function initialCheckupDate(rule: CheckupRecurrence, chosenDate: ISODate | null, today: ISODate): ISODate | undefined {
-  if (rule.kind === 'dates') return [...rule.dates].sort().find((d) => d >= today);
+/**
+ * Upcoming date when a checkup is saved. For a list of dates, it's the first one on or after today
+ * that also comes after the last visit, so a date already visited today is not brought back.
+ */
+export function initialCheckupDate(
+  rule: CheckupRecurrence,
+  chosenDate: ISODate | null,
+  today: ISODate,
+  lastVisit?: ISODate | null,
+): ISODate | undefined {
+  if (rule.kind === 'dates') return [...rule.dates].sort().find((d) => d >= today && (!lastVisit || d > lastVisit));
   return chosenDate ?? undefined;
 }
 

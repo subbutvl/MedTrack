@@ -77,13 +77,18 @@ export default function EditCheckupScreen() {
 
   if (!loaded) return null;
 
+  const lastVisit = visits.reduce<string | null>((max, v) => (!max || v.visitDate > max ? v.visitDate : max), null);
+
   const save = async () => {
     const next: typeof errors = {};
     if (!title.trim()) next.title = S.nameRequired;
     const parsed = draftToRecurrence(rec);
     if (parsed.error) next.rec = parsed.error;
     if (rec.kind !== 'dates' && nextDate && !DATE_RE.test(nextDate)) next.next = S.nextDateRequired;
-    if (rec.kind !== 'dates' && !nextDate && !params.id) next.next = S.nextDateRequired;
+    // A repeating checkup always needs a next date. Only a one-time checkup may be left without one
+    // when editing, after it has been visited.
+    const needsDate = rec.kind === 'preset' || rec.kind === 'interval' || (rec.kind === 'once' && !params.id);
+    if (needsDate && !nextDate) next.next = S.nextDateRequired;
     setErrors(next);
     if (Object.keys(next).length || !parsed.value) return;
 
@@ -95,7 +100,7 @@ export default function EditCheckupScreen() {
         location: location.trim() || null,
         notes: notes.trim() || null,
         recurrence: parsed.value,
-        nextDate: initialCheckupDate(parsed.value, nextDate || null, localToday()) ?? null,
+        nextDate: initialCheckupDate(parsed.value, nextDate || null, localToday(), lastVisit) ?? null,
       },
       params.id,
     );

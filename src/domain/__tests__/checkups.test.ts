@@ -11,6 +11,10 @@ describe('checkup helpers', () => {
   it('picks the first upcoming listed date', () => {
     expect(initialCheckupDate({ kind: 'dates', dates: ['2026-12-01', '2026-11-01'] }, null, '2026-11-18')).toBe('2026-12-01');
     expect(initialCheckupDate({ kind: 'months', every: 3 }, '2026-12-05', '2026-11-18')).toBe('2026-12-05');
+    // Editing on the day of a visit must not bring back the date just visited.
+    const dates = { kind: 'dates' as const, dates: ['2026-11-18', '2027-02-10'] };
+    expect(initialCheckupDate(dates, null, '2026-11-18', '2026-11-18')).toBe('2027-02-10');
+    expect(initialCheckupDate(dates, null, '2026-11-18', null)).toBe('2026-11-18');
   });
 
   it('describes recurrence', () => {
