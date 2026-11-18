@@ -70,7 +70,8 @@
           "faceIDPermission": "MedTrack uses Face ID to unlock your health data."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
