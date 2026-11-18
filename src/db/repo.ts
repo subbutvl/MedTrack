@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 
-import { DEFAULT_MEAL_TIMES, type ISODate, type MealTimes, type MedicationSchedule, type MinuteOfDay } from '@/domain/types';
+import { nextCheckupDate } from '@/domain/checkups';
+import { DEFAULT_MEAL_TIMES, type CheckupRecurrence, type ISODate, type MealTimes, type MedicationSchedule, type MinuteOfDay } from '@/domain/types';
 import type { LoggedEvent } from '@/domain/timeline';
 import { getDb } from './client';
 import { notifyChange } from './events';
@@ -318,4 +319,170 @@ export async function clearDose(ref: DoseRef) {
     }
   });
   notifyChange();
+}
+
+// ---------- Doctors ----------
+
+export type Doctor = {
+  id: string;
+  name: string;
+  specialty: string | null;
+  clinic: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+};
+
+export type DoctorInput = Omit<Doctor, 'id'>;
+
+export async function listDoctors(personId?: string): Promise<Doctor[]> {
+  const db = await getDb();
+  return personId
+    ? db.getAllAsync<Doctor>(
+        `SELECT d.id, d.name, d.specialty, d.clinic, d.phone, d.address, d.notes FROM doctor d
+         JOIN person_doctor pd ON pd.doctor_id = d.id WHERE pd.person_id = ? AND d.deleted = 0 ORDER BY d.name COLLATE NOCASE`,
+        personId,
+      )
+    : db.getAllAsync<Doctor>(
+        'SELECT id, name, specialty, clinic, phone, address, notes FROM doctor WHERE deleted = 0 ORDER BY name COLLATE NOCASE',
+      );
+}
+
+export async function getDoctor(id: string): Promise<Doctor | null> {
+  const db = await getDb();
+  return db.getFirstAsync<Doctor>('SELECT id, name, specialty, clinic, phone, address, notes FROM doctor WHERE id = ? AND deleted = 0', id);
+}
+
+/** Saves a doctor and links them to a person. A doctor can be shared by several people, such as a family GP. */
+export async function saveDoctor(input: DoctorInput, opts: { id?: string; personId?: string } = {}): Promise<string> {
+  const db = await getDb();
+  let id = opts.id;
+  if (id) {
+    await db.runAsync(
+      'UPDATE doctor SET name = ?, specialty = ?, clinic = ?, phone = ?, address = ?, notes = ?, updated_at = ? WHERE id = ?',
+      input.name, input.specialty, input.clinic, input.phone, input.address, input.notes, now(), id,
+    );
+  } else {
+    id = uuid();
+    await db.runAsync(
+      'INSERT INTO doctor (id, name, specialty, clinic, phone, address, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      id, input.name, input.specialty, input.clinic, input.phone, input.address, input.notes,
+    );
+  }
+  if (opts.personId) await linkDoctor(opts.personId, id, false);
+  notifyChange();
+  return id;
+}
+
+export async function linkDoctor(personId: string, doctorId: string, notify = true) {
+  const db = await getDb();
+  await db.runAsync('INSERT OR IGNORE INTO person_doctor (person_id, doctor_id) VALUES (?, ?)', personId, doctorId);
+  if (notify) notifyChange();
+}
+
+export async function unlinkDoctor(personId: string, doctorId: string) {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM person_doctor WHERE person_id = ? AND doctor_id = ?', personId, doctorId);
+  notifyChange();
+}
+
+// ---------- Checkups ----------
+
+export type Checkup = {
+  id: string;
+  personId: string;
+  doctorId: string | null;
+  title: string;
+  location: string | null;
+  recurrence: CheckupRecurrence;
+  nextDate: ISODate | null;
+  notes: string | null;
+};
+
+type CheckupRow = {
+  id: string;
+  person_id: string;
+  doctor_id: string | null;
+  title: string;
+  location: string | null;
+  recurrence: string;
+  next_date: string | null;
+  notes: string | null;
+};
+
+const toCheckup = (r: CheckupRow): Checkup => ({
+  id: r.id,
+  personId: r.person_id,
+  doctorId: r.doctor_id,
+  title: r.title,
+  location: r.location,
+  recurrence: JSON.parse(r.recurrence) as CheckupRecurrence,
+  nextDate: r.next_date,
+  notes: r.notes,
+});
+
+export async function listCheckups(personId?: string): Promise<Checkup[]> {
+  const db = await getDb();
+  const order = "ORDER BY next_date IS NULL, next_date, title COLLATE NOCASE";
+  const rows = personId
+    ? await db.getAllAsync<CheckupRow>(`SELECT * FROM checkup WHERE deleted = 0 AND person_id = ? ${order}`, personId)
+    : await db.getAllAsync<CheckupRow>(`SELECT * FROM checkup WHERE deleted = 0 ${order}`);
+  return rows.map(toCheckup);
+}
+
+export async function getCheckup(id: string): Promise<Checkup | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<CheckupRow>('SELECT * FROM checkup WHERE id = ? AND deleted = 0', id);
+  return row ? toCheckup(row) : null;
+}
+
+export type CheckupInput = Omit<Checkup, 'id'>;
+
+export async function saveCheckup(input: CheckupInput, id?: string): Promise<string> {
+  const db = await getDb();
+  const rec = JSON.stringify(input.recurrence);
+  if (id) {
+    await db.runAsync(
+      'UPDATE checkup SET person_id = ?, doctor_id = ?, title = ?, location = ?, recurrence = ?, next_date = ?, notes = ?, updated_at = ? WHERE id = ?',
+      input.personId, input.doctorId, input.title, input.location, rec, input.nextDate, input.notes, now(), id,
+    );
+  } else {
+    id = uuid();
+    await db.runAsync(
+      'INSERT INTO checkup (id, person_id, doctor_id, title, location, recurrence, next_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      id, input.personId, input.doctorId, input.title, input.location, rec, input.nextDate, input.notes,
+    );
+  }
+  notifyChange();
+  return id;
+}
+
+export async function deleteCheckup(id: string) {
+  const db = await getDb();
+  await db.runAsync('UPDATE checkup SET deleted = 1, updated_at = ? WHERE id = ?', now(), id);
+  notifyChange();
+}
+
+export type CheckupVisit = { id: string; visitDate: ISODate; notes: string | null };
+
+export async function listVisits(checkupId: string): Promise<CheckupVisit[]> {
+  const db = await getDb();
+  return db.getAllAsync<CheckupVisit>(
+    'SELECT id, visit_date AS visitDate, notes FROM checkup_visit WHERE checkup_id = ? AND deleted = 0 ORDER BY visit_date DESC',
+    checkupId,
+  );
+}
+
+/** Records a visit and schedules the next checkup from the actual visit date. */
+export async function markVisited(checkupId: string, visitDate: ISODate, notes: string | null = null): Promise<ISODate | undefined> {
+  const db = await getDb();
+  const c = await getCheckup(checkupId);
+  if (!c) return undefined;
+  const next = nextCheckupDate(c.recurrence, visitDate);
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync('INSERT INTO checkup_visit (id, checkup_id, visit_date, notes) VALUES (?, ?, ?, ?)', uuid(), checkupId, visitDate, notes);
+    await tx.runAsync('UPDATE checkup SET next_date = ?, updated_at = ? WHERE id = ?', next ?? null, now(), checkupId);
+  });
+  notifyChange();
+  return next;
 }

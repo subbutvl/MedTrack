@@ -40,6 +40,8 @@ function RootStack() {
         <Stack.Screen name="person/[id]" options={{ title: '' }} />
         <Stack.Screen name="medication/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="meal-times" options={{ title: 'Meal times' }} />
+        <Stack.Screen name="doctor/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="checkup/edit" options={{ presentation: 'modal' }} />
       </Stack>
     </>
   );
