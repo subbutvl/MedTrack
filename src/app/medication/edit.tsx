@@ -13,8 +13,10 @@ import {
   createStock,
   deleteMedication,
   getMedication,
+  listDoctors,
   listStock,
   saveMedication,
+  type Doctor,
   type StockItem,
 } from '@/db/repo';
 import { localToday } from '@/domain/dates';
@@ -45,6 +47,8 @@ export default function EditMedicationScreen() {
   const [notes, setNotes] = useState('');
   const [draft, setDraft] = useState<ScheduleDraft>(() => emptyDraft(localToday()));
   const [stockList, setStockList] = useState<StockItem[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorId, setDoctorId] = useState<string | null>(null);
   const [stockMode, setStockMode] = useState<StockMode>('none');
   const [stockId, setStockId] = useState<string | null>(null);
   const [stockQty, setStockQty] = useState('30');
@@ -59,6 +63,7 @@ export default function EditMedicationScreen() {
         const m = await getMedication(params.id);
         if (m) {
           setPersonId(m.personId);
+          setDoctorId(m.doctorId);
           setName(m.name);
           setStrength(m.strength ?? '');
           setForm((m.form as FormKey) ?? 'tablet');
@@ -73,6 +78,10 @@ export default function EditMedicationScreen() {
       setLoaded(true);
     })();
   }, [params.id]);
+
+  useEffect(() => {
+    if (personId) listDoctors(personId).then(setDoctors);
+  }, [personId]);
 
   if (!loaded) return null;
 
@@ -104,7 +113,7 @@ export default function EditMedicationScreen() {
     await saveMedication(
       {
         personId,
-        doctorId: null,
+        doctorId,
         stockItemId,
         name: name.trim(),
         strength: strength.trim() || null,
@@ -147,6 +156,16 @@ export default function EditMedicationScreen() {
           options={(Object.keys(S.forms) as FormKey[]).map((k) => ({ value: k, label: S.forms[k] }))}
         />
       </Field>
+
+      {doctors.length ? (
+        <Field label={S.doctor}>
+          <ChipGroup
+            value={doctorId ?? ''}
+            onChange={(v) => setDoctorId(v || null)}
+            options={[{ value: '', label: S.noDoctor }, ...doctors.map((d) => ({ value: d.id, label: d.name }))]}
+          />
+        </Field>
+      ) : null}
 
       <Field label={S.frequency} error={errors.weekdays ?? errors.everyN}>
         <ChipGroup

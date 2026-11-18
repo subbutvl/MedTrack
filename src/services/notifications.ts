@@ -66,3 +66,32 @@ export async function applyDosePlan(plan: PlannedNotification[], titleFor: (pers
     });
   }
 }
+
+/** Replaces scheduled checkup reminders. The text names the person and checkup but no medicine. */
+export async function applyCheckupPlan(
+  plan: { id: string; date: string; minute: number; kind: 'dayBefore' | 'morningOf'; checkupId: string }[],
+  describe: (checkupId: string) => { title: string; who: string } | undefined,
+) {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled.filter((n) => n.identifier.startsWith('checkup:')).map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+  for (const p of plan) {
+    const info = describe(p.checkupId);
+    if (!info) continue;
+    const [y, m, d] = p.date.split('-').map(Number);
+    await Notifications.scheduleNotificationAsync({
+      identifier: p.id,
+      content: {
+        title: p.kind === 'dayBefore' ? `Checkup tomorrow: ${info.title}` : `Checkup today: ${info.title}`,
+        body: info.who,
+        data: { checkupId: p.checkupId },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(y, m - 1, d, Math.floor(p.minute / 60), p.minute % 60),
+        channelId: DOSE_CHANNEL,
+      },
+    });
+  }
+}

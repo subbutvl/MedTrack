@@ -2,11 +2,12 @@ import * as Notifications from 'expo-notifications';
 import { AppState } from 'react-native';
 
 import { localToday } from '@/domain/dates';
+import { planCheckupNotifications } from '@/domain/checkups';
 import { planDoseNotifications, type PlanInput } from '@/domain/notificationPlan';
 import { dosesForDay } from '@/domain/schedule';
-import { getGlobalMealTimes, listDoseEvents, listMedications, listPeople, logDose } from '@/db/repo';
+import { getGlobalMealTimes, listCheckups, listDoseEvents, listMedications, listPeople, logDose } from '@/db/repo';
 import { onDataChange } from '@/db/events';
-import { applyDosePlan, DOSE_CATEGORY, DOSE_CHANNEL } from './notifications';
+import { applyCheckupPlan, applyDosePlan, DOSE_CATEGORY, DOSE_CHANNEL } from './notifications';
 
 const SNOOZE_MINUTES = 10;
 
@@ -40,6 +41,15 @@ export async function replanReminders() {
   await applyDosePlan(plan, (id) => {
     const p = byId.get(id);
     return !p || p.isSelf ? 'Time for your medicine' : `Time for ${p.name}'s medicine`;
+  });
+
+  const checkups = (await listCheckups()).filter((c) => byId.has(c.personId));
+  const cById = new Map(checkups.map((c) => [c.id, c]));
+  await applyCheckupPlan(planCheckupNotifications(checkups, today, minuteOf(new Date())), (id) => {
+    const c = cById.get(id);
+    if (!c) return undefined;
+    const p = byId.get(c.personId);
+    return { title: c.title, who: !p || p.isSelf ? 'For you' : `For ${p.name}` };
   });
 }
 
