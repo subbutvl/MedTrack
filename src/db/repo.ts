@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 
 import { nextCheckupDate } from '@/domain/checkups';
+import type { ReadingType, ReadingValue } from '@/domain/readings';
 import { DEFAULT_MEAL_TIMES, type CheckupRecurrence, type ISODate, type MealTimes, type MedicationSchedule, type MinuteOfDay } from '@/domain/types';
 import type { LoggedEvent } from '@/domain/timeline';
 import { getDb } from './client';
@@ -485,4 +486,65 @@ export async function markVisited(checkupId: string, visitDate: ISODate, notes: 
   });
   notifyChange();
   return next;
+}
+
+// ---------- Health log ----------
+
+export type Reading = { id: string; personId: string; value: ReadingValue; takenAt: number };
+
+export async function addReading(personId: string, value: ReadingValue, takenAt = now()) {
+  const db = await getDb();
+  const context = value.type === 'sugar' ? value.context : null;
+  await db.runAsync(
+    'INSERT INTO reading (id, person_id, type, value, context, taken_at) VALUES (?, ?, ?, ?, ?, ?)',
+    uuid(), personId, value.type, JSON.stringify(value), context, takenAt,
+  );
+  notifyChange();
+}
+
+export async function listReadings(personId: string, type?: ReadingType, limit = 100): Promise<Reading[]> {
+  const db = await getDb();
+  const rows = type
+    ? await db.getAllAsync<{ id: string; person_id: string; value: string; taken_at: number }>(
+        'SELECT id, person_id, value, taken_at FROM reading WHERE person_id = ? AND type = ? AND deleted = 0 ORDER BY taken_at DESC LIMIT ?',
+        personId, type, limit,
+      )
+    : await db.getAllAsync<{ id: string; person_id: string; value: string; taken_at: number }>(
+        'SELECT id, person_id, value, taken_at FROM reading WHERE person_id = ? AND deleted = 0 ORDER BY taken_at DESC LIMIT ?',
+        personId, limit,
+      );
+  return rows.map((r) => ({ id: r.id, personId: r.person_id, value: JSON.parse(r.value) as ReadingValue, takenAt: r.taken_at }));
+}
+
+export async function deleteReading(id: string) {
+  const db = await getDb();
+  await db.runAsync('UPDATE reading SET deleted = 1, updated_at = ? WHERE id = ?', now(), id);
+  notifyChange();
+}
+
+export type Severity = 'mild' | 'moderate' | 'severe';
+export type SideEffect = { id: string; personId: string; medicationId: string | null; description: string; severity: Severity; notedAt: number };
+
+export async function addSideEffect(input: Omit<SideEffect, 'id' | 'notedAt'>, notedAt = now()) {
+  const db = await getDb();
+  await db.runAsync(
+    'INSERT INTO side_effect (id, person_id, medication_id, description, severity, noted_at) VALUES (?, ?, ?, ?, ?, ?)',
+    uuid(), input.personId, input.medicationId, input.description, input.severity, notedAt,
+  );
+  notifyChange();
+}
+
+export async function listSideEffects(personId: string, limit = 50): Promise<SideEffect[]> {
+  const db = await getDb();
+  return db.getAllAsync<SideEffect>(
+    `SELECT id, person_id AS personId, medication_id AS medicationId, description, severity, noted_at AS notedAt
+     FROM side_effect WHERE person_id = ? AND deleted = 0 ORDER BY noted_at DESC LIMIT ?`,
+    personId, limit,
+  );
+}
+
+export async function deleteSideEffect(id: string) {
+  const db = await getDb();
+  await db.runAsync('UPDATE side_effect SET deleted = 1, updated_at = ? WHERE id = ?', now(), id);
+  notifyChange();
 }
