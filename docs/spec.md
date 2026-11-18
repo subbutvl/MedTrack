@@ -78,10 +78,10 @@ A phone app that reliably reminds you and your family to take medicines and go t
 
 ## 10. Privacy and security
 
-- **Storage**: SQLite encrypted with SQLCipher (`op-sqlite` with SQLCipher enabled, or `expo-sqlite` with SQLCipher). The 256-bit key is random and stored in the Keychain or Keystore through `expo-secure-store`.
+- **Storage**: SQLite encrypted with SQLCipher (`expo-sqlite` with `useSQLCipher`). The 256-bit key is random and stored in the Keychain or Keystore through `expo-secure-store`.
 - **App lock**: a PIN (stored as an Argon2/scrypt hash) and/or biometrics (`expo-local-authentication`). The app re-locks after N minutes in the background.
 - Notification text is generic by default ("Time for Amma's 8:00 medicines"), with an option to show medicine names. This keeps names off the lock screen.
-- **Backup**: Export creates a `.medbak` file containing a JSON dump of every table, a gzip, then AES-256-GCM with a key derived from a backup passphrase you choose (scrypt or Argon2id). You save it with the share sheet (Drive, iCloud Files, WhatsApp to yourself, and so on). Restore reads the file, asks for the passphrase, and then either replaces everything or merges by UUID.
+- **Backup**: Export creates a `.medbak` file containing a JSON dump of every table, sealed with AES-256-GCM using a key derived from a backup passphrase you choose (scrypt, N=2^15). You save it with the share sheet (Drive, iCloud Files, WhatsApp to yourself, and so on). Restore reads the file, asks for the passphrase, and then replaces everything on the phone. Merging by UUID is planned for later.
 - No accounts, analytics, or network calls in v1. Browser search is the only network use, and it happens outside the app.
 
 ## 11. Caregiver (Phase 2)
@@ -116,7 +116,7 @@ A read-only view of one senior's schedule and log on a family member's phone. It
 - **Language**: English only in v1. UI strings live in one file so other languages can be added later.
 - **Framework**: Expo (SDK 52 or later), React Native, TypeScript, and expo-router. It needs a development build, not Expo Go, because of SQLCipher and notification actions.
 - **Layers**:
-  - `src/db`: schema, migrations, and repositories (Drizzle ORM on top of op-sqlite).
+  - `src/db`: schema, migrations, and repositories (plain SQL repositories on `expo-sqlite`).
   - `src/domain`: pure TypeScript logic with unit tests (Jest). It covers dose expansion (schedule, meals, tapering, then concrete times), checkup recurrence, stock forecasting, and notification planning.
   - `src/services`: the notification scheduler, the lock, and backup.
   - `src/state`: Zustand for UI state, with the database as the source of truth.

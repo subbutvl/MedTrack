@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ensureSelfProfile } from '@/db/client';
 import { configureNotifications, requestPermission } from '@/services/notifications';
 import { startReminderEngine } from '@/services/reminders';
+import { LockProvider } from '@/security/LockProvider';
 import { fontAssets, fonts, ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -44,6 +45,8 @@ function RootStack() {
         <Stack.Screen name="checkup/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="health/[personId]" options={{ title: '' }} />
         <Stack.Screen name="health/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="app-lock" options={{ title: 'App lock' }} />
+        <Stack.Screen name="backup" options={{ title: 'Backup & restore' }} />
       </Stack>
     </>
   );
@@ -72,7 +75,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <RootStack />
+        <LockProvider>
+          <RootStack />
+        </LockProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
