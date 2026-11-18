@@ -43,7 +43,7 @@ export async function requestPermission(): Promise<boolean> {
  * Replaces every scheduled dose reminder with the given plan, which comes from
  * planDoseNotifications. Notification text stays generic so medicine names stay off the lock screen.
  */
-export async function applyDosePlan(plan: PlannedNotification[], personName: (id: string) => string) {
+export async function applyDosePlan(plan: PlannedNotification[], titleFor: (personId: string) => string) {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
@@ -57,10 +57,10 @@ export async function applyDosePlan(plan: PlannedNotification[], personName: (id
     await Notifications.scheduleNotificationAsync({
       identifier: p.id,
       content: {
-        title: `Time for ${personName(p.personId)}'s medicine`,
+        title: titleFor(p.personId),
         body: 'Tap to see what to take.',
         categoryIdentifier: DOSE_CATEGORY,
-        data: { medicationId: p.medicationId, date: p.date, minute: p.minute },
+        data: { medicationId: p.medicationId, date: p.date, minute: p.minute, slotIndex: p.slotIndex },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when, channelId: DOSE_CHANNEL },
     });

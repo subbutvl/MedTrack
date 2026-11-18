@@ -7,8 +7,9 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ensureSelfProfile } from '@/db/client';
-import { configureNotifications } from '@/services/notifications';
-import { fontAssets, ThemeProvider, useTheme } from '@/theme';
+import { configureNotifications, requestPermission } from '@/services/notifications';
+import { startReminderEngine } from '@/services/reminders';
+import { fontAssets, fonts, ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -23,8 +24,22 @@ function RootStack() {
   return (
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-        <Stack.Screen name="(tabs)" />
+      <Stack
+        screenOptions={{
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.primary,
+          headerTitleStyle: { fontFamily: fonts.heading, color: colors.text },
+          headerShadowVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="person/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="person/[id]" options={{ title: '' }} />
+        <Stack.Screen name="medication/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="meal-times" options={{ title: 'Meal times' }} />
       </Stack>
     </>
   );
@@ -34,8 +49,14 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
 
   useEffect(() => {
-    configureNotifications().catch(() => {});
-    ensureSelfProfile().catch((e) => console.warn('DB init failed', e));
+    let stop: (() => void) | undefined;
+    (async () => {
+      await configureNotifications().catch(() => {});
+      await requestPermission().catch(() => false);
+      await ensureSelfProfile().catch((e) => console.warn('DB init failed', e));
+      stop = startReminderEngine();
+    })();
+    return () => stop?.();
   }, []);
 
   useEffect(() => {

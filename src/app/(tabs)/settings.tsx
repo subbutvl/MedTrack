@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
@@ -43,11 +45,25 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      {[strings.settings.mealTimes, strings.settings.security, strings.settings.backup].map((label) => (
+      <Pressable accessibilityRole="button" onPress={() => router.push('/meal-times')}>
+        <Card>
+          <View style={styles.row}>
+            <View style={styles.flex}>
+              <AppText variant="heading">{strings.settings.mealTimes}</AppText>
+              <AppText variant="caption" tone="muted">
+                {strings.settings.mealTimesHint}
+              </AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </View>
+        </Card>
+      </Pressable>
+
+      {[strings.settings.security, strings.settings.backup].map((label) => (
         <Card key={label}>
           <AppText variant="heading">{label}</AppText>
           <AppText variant="caption" tone="muted">
-            Coming soon
+            {strings.settings.comingSoon}
           </AppText>
         </Card>
       ))}
@@ -58,4 +74,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   segment: { flexDirection: 'row', borderRadius: radius.md, padding: spacing.xs, gap: spacing.xs },
   option: { flex: 1, minHeight: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  flex: { flex: 1 },
 });
