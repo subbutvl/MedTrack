@@ -14,6 +14,9 @@ describe('readings', () => {
     expect(flagReading(t)).toBe('high');
     expect(flagReading({ type: 'sugar', mgdl: 120, context: 'fasting' })).toBe('high');
     expect(flagReading({ type: 'sugar', mgdl: 120, context: 'post_meal' })).toBe('normal');
+    expect(flagReading({ type: 'sugar', mgdl: 150, context: 'random' })).toBe('normal');
+    expect(flagReading({ type: 'sugar', mgdl: 200, context: 'random' })).toBe('high');
+    expect(flagReading({ type: 'sugar', mgdl: 65, context: 'random' })).toBe('low');
     expect(flagReading({ type: 'spo2', percent: 92 })).toBe('low');
   });
 
