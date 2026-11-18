@@ -32,6 +32,7 @@ type InputProps = {
   multiline?: boolean;
   autoFocus?: boolean;
   accessibilityLabel?: string;
+  secureTextEntry?: boolean;
 };
 
 export function Input({ multiline, ...props }: InputProps) {
