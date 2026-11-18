@@ -59,13 +59,20 @@ export default function SettingsScreen() {
         </Card>
       </Pressable>
 
-      {[strings.settings.security, strings.settings.backup].map((label) => (
-        <Card key={label}>
-          <AppText variant="heading">{label}</AppText>
-          <AppText variant="caption" tone="muted">
-            {strings.settings.comingSoon}
-          </AppText>
-        </Card>
+      {[
+        { label: strings.settings.security, href: '/app-lock' as const },
+        { label: strings.settings.backup, href: '/backup' as const },
+      ].map((item) => (
+        <Pressable key={item.href} accessibilityRole="button" onPress={() => router.push(item.href)}>
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.flex}>
+                <AppText variant="heading">{item.label}</AppText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </View>
+          </Card>
+        </Pressable>
       ))}
     </Screen>
   );
