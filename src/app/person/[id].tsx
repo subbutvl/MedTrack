@@ -88,6 +88,21 @@ export default function PersonScreen() {
 
       <Button label={strings.medication.newTitle} onPress={() => router.push({ pathname: '/medication/edit', params: { personId: id } })} />
 
+      <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/health/[personId]', params: { personId: id } })}>
+        <Card>
+          <View style={styles.header}>
+            <Ionicons name="pulse-outline" size={22} color={colors.primary} />
+            <View style={styles.flex}>
+              <AppText variant="heading">{strings.health.open}</AppText>
+              <AppText variant="caption" tone="muted">
+                {strings.health.openHint}
+              </AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </View>
+        </Card>
+      </Pressable>
+
       <AppText variant="label" tone="muted">
         {strings.checkups.title}
       </AppText>
