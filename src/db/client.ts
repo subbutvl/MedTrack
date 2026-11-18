@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import * as SQLite from 'expo-sqlite';
 
+import { notifyChange } from './events';
 import { migrations } from './schema';
 
 const DB_NAME = 'medtrack.db';
@@ -54,5 +55,6 @@ export async function ensureSelfProfile(name = 'Me') {
   if (me) return me.id;
   const id = Crypto.randomUUID();
   await db.runAsync('INSERT INTO person (id, name, is_self) VALUES (?, ?, 1)', id, name);
+  notifyChange();
   return id;
 }

@@ -15,6 +15,7 @@ export type PlannedNotification = {
   personId: string;
   date: ISODate;
   minute: MinuteOfDay;
+  slotIndex: number;
 };
 
 /** iOS allows 64 pending local notifications per app. Leave headroom for checkup and refill alerts. */
@@ -43,6 +44,7 @@ export function planDoseNotifications(
           personId: input.personId,
           date,
           minute: d.minute,
+          slotIndex: d.slotIndex,
         });
       }
     }

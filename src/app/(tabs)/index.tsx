@@ -1,54 +1,167 @@
-import { StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useMemo } from 'react';
+import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DoseCard } from '@/components/DoseCard';
 import { EmptyState } from '@/components/EmptyState';
 import { Screen } from '@/components/Screen';
+import { clearDose, getGlobalMealTimes, listDoseEvents, listMedications, listPeople, listStock, logDose, type DoseRef } from '@/db/repo';
+import { localToday } from '@/domain/dates';
+import { dailyUse } from '@/domain/schedule';
+import { forecastStock } from '@/domain/stock';
+import { buildTimeline, sectionFor, type TimelineItem } from '@/domain/timeline';
+import { useData, useMinuteTick } from '@/hooks/useData';
 import { strings } from '@/i18n/strings';
-import { DEFAULT_MEAL_TIMES, type Meal } from '@/domain/types';
-import { spacing, useTheme } from '@/theme';
+import { scheduleSnooze } from '@/services/reminders';
+import { radius, spacing, useTheme } from '@/theme';
 
-const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const SNOOZE_OPTIONS = [10, 30, 60];
+
+async function loadToday(date: string) {
+  const [people, meds, events, stock, globalMeals] = await Promise.all([
+    listPeople(),
+    listMedications(),
+    listDoseEvents(date),
+    listStock(),
+    getGlobalMealTimes(),
+  ]);
+  const people_ = new Map(people.map((p) => [p.id, p]));
+  const timelineMeds = meds
+    .filter((m) => m.active && people_.has(m.personId))
+    .map((m) => ({
+      id: m.id,
+      personId: m.personId,
+      name: m.name,
+      strength: m.strength,
+      schedule: m.schedule,
+      meals: people_.get(m.personId)?.mealTimes ?? globalMeals,
+    }));
+
+  // Refill warnings: sum daily use across every medicine sharing a stock item.
+  const lowStock = stock
+    .map((s) => {
+      const uses = timelineMeds
+        .filter((m) => meds.find((x) => x.id === m.id)?.stockItemId === s.id)
+        .map((m) => dailyUse(m.schedule, date, m.meals));
+      return { stock: s, ...forecastStock(s.quantity, uses, s.thresholdDays) };
+    })
+    .filter((x) => x.low);
+
+  return { people: people_, timelineMeds, events, lowStock };
+}
 
 export default function TodayScreen() {
   const { colors } = useTheme();
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const now = useMinuteTick();
+  const date = localToday(now);
+  const nowMinute = now.getHours() * 60 + now.getMinutes();
+  const { data } = useData(() => loadToday(date), [date]);
+
+  const timeline = useMemo(
+    () => (data ? buildTimeline(data.timelineMeds, data.events, date, nowMinute) : []),
+    [data, date, nowMinute],
+  );
+  const multiPerson = (data?.people.size ?? 0) > 1;
+  const done = timeline.filter((t) => t.status === 'taken' || t.status === 'skipped').length;
+
+  const sections = useMemo(() => {
+    const groups = new Map<ReturnType<typeof sectionFor>, TimelineItem[]>();
+    for (const item of timeline) {
+      const k = sectionFor(item.minute);
+      groups.set(k, [...(groups.get(k) ?? []), item]);
+    }
+    return [...groups.entries()];
+  }, [timeline]);
+
+  const refOf = (i: TimelineItem): DoseRef => ({ medicationId: i.medicationId, date: i.date, minute: i.minute, slotIndex: i.slotIndex, amount: i.amount });
+
+  const snooze = (item: TimelineItem) => {
+    const apply = async (minutes: number) => {
+      await logDose(refOf(item), 'snoozed', { snoozedUntilMinute: nowMinute + minutes });
+      await scheduleSnooze(item.medicationId, item.date, item.slotIndex, minutes);
+    };
+    const labels = SNOOZE_OPTIONS.map((m) => `${m} minutes`);
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: strings.today.snoozeTitle, options: [...labels, strings.common.cancel], cancelButtonIndex: labels.length },
+        (i) => i < labels.length && void apply(SNOOZE_OPTIONS[i]),
+      );
+    } else {
+      Alert.alert(strings.today.snoozeTitle, undefined, [
+        ...SNOOZE_OPTIONS.map((m, i) => ({ text: labels[i], onPress: () => void apply(m) })),
+        { text: strings.common.cancel, style: 'cancel' as const },
+      ]);
+    }
+  };
+
+  const heading = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <Screen>
       <View>
         <AppText variant="label" tone="muted">
-          {today}
+          {heading}
         </AppText>
         <AppText variant="display">{strings.today.title}</AppText>
+        {timeline.length > 0 ? (
+          <AppText tone="muted">{done === timeline.length ? strings.today.allDone : strings.today.progress(done, timeline.length)}</AppText>
+        ) : null}
       </View>
 
-      <View style={styles.meals}>
-        {(Object.keys(DEFAULT_MEAL_TIMES) as Meal[]).map((meal) => (
-          <View key={meal} style={[styles.meal, { backgroundColor: colors.surfaceAlt }]}>
-            <AppText variant="caption" tone="muted">
-              {strings.meals[meal]}
-            </AppText>
-            <AppText variant="bodyStrong" tone="primary">
-              {fmt(DEFAULT_MEAL_TIMES[meal])}
+      {timeline.length > 0 ? (
+        <View style={[styles.progressTrack, { backgroundColor: colors.surfaceAlt }]}>
+          <View style={[styles.progressFill, { backgroundColor: colors.accent, width: `${(done / timeline.length) * 100}%` }]} />
+        </View>
+      ) : null}
+
+      {data?.lowStock.map(({ stock, daysLeft }) => (
+        <Card key={stock.id} style={{ borderColor: colors.warning }}>
+          <View style={styles.row}>
+            <Ionicons name="warning-outline" size={20} color={colors.warning} />
+            <AppText tone="warning" style={styles.flex}>
+              {strings.today.lowStock(stock.name, daysLeft)}
             </AppText>
           </View>
-        ))}
-      </View>
+        </Card>
+      ))}
 
-      <EmptyState icon="medkit-outline" title={strings.today.emptyTitle} body={strings.today.emptyBody} />
+      {data && timeline.length === 0 ? (
+        <>
+          <EmptyState icon="medkit-outline" title={strings.today.emptyTitle} body={strings.today.emptyBody} />
+          <Button label={strings.today.addMedicine} onPress={() => router.push('/people')} />
+        </>
+      ) : null}
 
-      <Card>
-        <AppText variant="heading">Coming next</AppText>
-        <AppText tone="muted">
-          Dose timeline grouped by meal, with {strings.today.taken}, {strings.today.skip} and {strings.today.snooze}.
-        </AppText>
-      </Card>
+      {sections.map(([section, items]) => (
+        <View key={section} style={styles.section}>
+          <AppText variant="label" tone="muted">
+            {strings.today.sections[section]}
+          </AppText>
+          {items.map((item) => (
+            <DoseCard
+              key={item.key}
+              item={item}
+              personName={multiPerson ? data?.people.get(item.personId)?.name : undefined}
+              onTaken={() => void logDose(refOf(item), 'taken')}
+              onSkip={() => void logDose(refOf(item), 'skipped')}
+              onSnooze={() => snooze(item)}
+              onUndo={() => void clearDose(refOf(item))}
+            />
+          ))}
+        </View>
+      ))}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  meals: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  meal: { flexGrow: 1, flexBasis: '22%', borderRadius: 12, padding: spacing.md, gap: 2 },
+  section: { gap: spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  flex: { flex: 1 },
+  progressTrack: { height: 6, borderRadius: radius.pill, overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: radius.pill },
 });

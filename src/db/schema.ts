@@ -109,4 +109,9 @@ export const migrations: string[] = [
     noted_at INTEGER NOT NULL
   );
   `,
+  // 2: snooze support and one logged event per dose slot
+  `
+  ALTER TABLE dose_event ADD COLUMN snoozed_until INTEGER;
+  CREATE UNIQUE INDEX idx_dose_event_slot ON dose_event(medication_id, planned_date, slot_index);
+  `,
 ];
