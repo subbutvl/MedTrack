@@ -99,7 +99,8 @@ export function flagReading(v: ReadingValue): Flag {
       return 'normal';
     case 'sugar': {
       if (v.mgdl < 70) return 'low';
-      const high = v.context === 'fasting' ? 100 : 140;
+      // A random reading can follow a meal, so it uses the random-test cutoff, not the after-meal one.
+      const high = v.context === 'fasting' ? 100 : v.context === 'post_meal' ? 140 : 199;
       return v.mgdl > high ? 'high' : 'normal';
     }
     case 'temperature':
