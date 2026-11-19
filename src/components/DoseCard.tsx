@@ -111,9 +111,11 @@ export function DoseCard({ item, details, nextUp, onTaken, onSkip, onSnooze, onS
             <Ionicons name="time-outline" size={16} color={colors.textMuted} />
             <View>
               <AppText variant="bodyStrong">{time}</AppText>
-              <AppText variant="caption" tone={item.status === 'overdue' ? 'danger' : 'muted'}>
-                {item.status === 'pending' ? (item.minute >= 18 * 60 ? strings.today.tonight : strings.today.status.pending) : strings.today.status[item.status]}
-              </AppText>
+              {item.status !== 'pending' ? (
+                <AppText variant="caption" tone={item.status === 'overdue' ? 'danger' : 'muted'}>
+                  {strings.today.status[item.status]}
+                </AppText>
+              ) : null}
             </View>
           </View>
           {details.doctor ? (
@@ -150,8 +152,25 @@ export function DoseCard({ item, details, nextUp, onTaken, onSkip, onSnooze, onS
     );
   }
 
+  // Doses still to take carry the same outline and corner badge as the Next up card.
+  const upcoming = !done && item.status !== 'missed';
+  const badgeColor = item.status === 'overdue' ? colors.danger : colors.accent;
+
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: item.status === 'due' ? colors.accent : colors.border }]}>
+    <View
+      style={[
+        styles.card,
+        upcoming && styles.outlined,
+        { backgroundColor: colors.surface, borderColor: upcoming ? badgeColor : colors.border },
+      ]}
+    >
+      {upcoming ? (
+        <View style={[styles.nextTag, { backgroundColor: badgeColor }]}>
+          <AppText variant="caption" style={styles.nextTagText}>
+            {strings.today.status[item.status].toUpperCase()}
+          </AppText>
+        </View>
+      ) : null}
       <View style={styles.row}>
         <View style={[styles.iconBox, { borderColor: colors.border }]}>
           <MaterialCommunityIcons name={icon} size={22} color={colors.text} />
@@ -167,12 +186,14 @@ export function DoseCard({ item, details, nextUp, onTaken, onSkip, onSnooze, onS
             </AppText>
           ) : null}
         </View>
-        <View style={[styles.pill, { backgroundColor: st.bg, borderColor: st.fg }]}>
-          <Ionicons name={st.icon} size={14} color={st.fg} />
-          <AppText variant="caption" style={[styles.pillText, { color: st.fg }]}>
-            {strings.today.status[item.status].toUpperCase()}
-          </AppText>
-        </View>
+        {!upcoming ? (
+          <View style={[styles.pill, { backgroundColor: st.bg, borderColor: st.fg }]}>
+            <Ionicons name={st.icon} size={14} color={st.fg} />
+            <AppText variant="caption" style={[styles.pillText, { color: st.fg }]}>
+              {strings.today.status[item.status].toUpperCase()}
+            </AppText>
+          </View>
+        ) : null}
       </View>
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <FooterLink icon="search" label={strings.medication.lookUp} onPress={() => void lookUp(searchName)} />
@@ -238,6 +259,7 @@ function SquareButton({
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: radius.lg + 4, padding: spacing.lg, gap: spacing.md },
   nextCard: { borderWidth: 1.5, overflow: 'hidden', paddingTop: spacing.xl },
+  outlined: { borderWidth: 1.5, overflow: 'hidden', paddingTop: spacing.xl },
   nextTag: { position: 'absolute', top: 0, right: 0, paddingHorizontal: spacing.md, paddingVertical: 3, borderBottomLeftRadius: radius.md },
   nextTagText: { color: '#FFFFFF', fontWeight: '700', letterSpacing: 0.6, fontSize: 11 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },

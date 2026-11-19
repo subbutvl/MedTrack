@@ -239,7 +239,7 @@ function WeekDay({
         {letter}
       </AppText>
       {/* Today gets a dashed ring around its circle. */}
-      <View style={[styles.todayRing, isToday && { borderColor: colors.accent }]}>{circle}</View>
+      {isToday ? <View style={[styles.todayRing, { borderColor: colors.accent }]}>{circle}</View> : <View style={styles.ringSpace}>{circle}</View>}
       <AppText variant="caption" tone={isToday ? 'default' : 'muted'} style={isToday ? styles.todayLabel : undefined}>
         {isToday ? C.today : day}
       </AppText>
@@ -251,8 +251,10 @@ const styles = StyleSheet.create({
   weekCard: { borderRadius: radius.lg + 4, borderWidth: 1, padding: spacing.md, gap: spacing.md },
   weekRow: { flexDirection: 'row' },
   day: { flex: 1, alignItems: 'center', gap: spacing.xs },
-  todayRing: { padding: 2, borderRadius: 30, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'transparent' },
-  circle: { borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  todayRing: { padding: 2, borderRadius: 24, borderWidth: 1.5, borderStyle: 'dashed' },
+  // Same footprint as the dashed ring, so every circle lines up.
+  ringSpace: { padding: 3.5 },
+  circle: { borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   todayLabel: { fontWeight: '600' },
   divider: { height: 1 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
