@@ -22,8 +22,7 @@ export default function PeopleScreen() {
   const { data: people } = useData(load);
 
   return (
-    <Screen>
-      <AppText variant="display">{strings.people.title}</AppText>
+    <Screen header={<AppText variant="display">{strings.people.title}</AppText>}>
 
       {people?.map((p) => (
         <Pressable

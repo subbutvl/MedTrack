@@ -22,8 +22,7 @@ export default function CheckupsScreen() {
   const visible = data?.checkups.filter((c) => data.people.has(c.personId)) ?? [];
 
   return (
-    <Screen>
-      <AppText variant="display">{strings.checkups.title}</AppText>
+    <Screen header={<AppText variant="display">{strings.checkups.title}</AppText>}>
       {data && visible.length === 0 ? (
         <EmptyState icon="calendar-outline" title={strings.checkups.emptyTitle} body={strings.checkups.emptyBody} />
       ) : null}

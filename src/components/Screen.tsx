@@ -6,6 +6,8 @@ import { spacing, useTheme } from '@/theme';
 
 type Props = {
   children: ReactNode;
+  /** Shown above the content and kept in place while only the content scrolls. */
+  header?: ReactNode;
   /** Scrollable content (default true). */
   scroll?: boolean;
   /**
@@ -20,12 +22,13 @@ type Props = {
  * Every screen renders inside this, so content never sits under the notch, camera cutout,
  * status bar, or home indicator, in light and dark mode alike.
  */
-export function Screen({ children, scroll = true, edges = ['top', 'left', 'right'], contentStyle }: Props) {
+export function Screen({ children, header, scroll = true, edges = ['top', 'left', 'right'], contentStyle }: Props) {
   const { colors } = useTheme();
   const inner = [styles.content, contentStyle];
 
   return (
     <SafeAreaView edges={edges} style={[styles.root, { backgroundColor: colors.background }]}>
+      {header ? <View style={[styles.header, { borderBottomColor: colors.border }]}>{header}</View> : null}
       {scroll ? (
         <ScrollView contentContainerStyle={inner} keyboardShouldPersistTaps="handled">
           {children}
@@ -41,4 +44,11 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.lg },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
 });

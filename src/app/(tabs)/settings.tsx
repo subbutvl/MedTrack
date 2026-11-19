@@ -18,8 +18,7 @@ export default function SettingsScreen() {
   const { colors, preference, setPreference } = useTheme();
 
   return (
-    <Screen>
-      <AppText variant="display">{strings.settings.title}</AppText>
+    <Screen header={<AppText variant="display">{strings.settings.title}</AppText>}>
 
       <Card>
         <AppText variant="label" tone="muted">
