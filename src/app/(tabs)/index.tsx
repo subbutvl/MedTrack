@@ -9,6 +9,7 @@ import { Card } from '@/components/Card';
 import { DoseCard } from '@/components/DoseCard';
 import { PersonSwitcher } from '@/components/PersonSwitcher';
 import { EmptyState } from '@/components/EmptyState';
+import { MedicineCalendar } from '@/components/MedicineCalendar';
 import { Screen } from '@/components/Screen';
 import { clearDose, getGlobalMealTimes, listDoseEvents, listMedications, listPeople, listStock, logDose, type DoseRef } from '@/db/repo';
 import { localToday } from '@/domain/dates';
@@ -128,6 +129,7 @@ export default function TodayScreen() {
         </>
       }
     >
+      {data && person && data.timelineMeds.length > 0 ? <MedicineCalendar personId={person.id} meds={data.timelineMeds} /> : null}
 
       {data?.lowStock.map(({ stock, daysLeft }) => (
         <Card key={stock.id} style={{ borderColor: colors.warning }}>

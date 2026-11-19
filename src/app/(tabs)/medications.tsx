@@ -11,7 +11,6 @@ import { CheckupRow } from '@/components/CheckupRow';
 import { CopySearchButton } from '@/components/CopySearchButton';
 import { EmptyState } from '@/components/EmptyState';
 import { HealthLog } from '@/components/HealthLog';
-import { MedicineCalendar } from '@/components/MedicineCalendar';
 import { Screen } from '@/components/Screen';
 import { getGlobalMealTimes, listCheckups, listDoctors, listMedications, markVisited, type Checkup } from '@/db/repo';
 import { localToday } from '@/domain/dates';
@@ -122,10 +121,6 @@ export default function MedicationsScreen() {
             <EmptyState icon="medkit-outline" title={M.emptyMedicines} body={M.emptyMedicinesBody} />
           ) : (
             <>
-              <MedicineCalendar personId={personId} meds={data.meds} meals={meals ?? DEFAULT_MEAL_TIMES} />
-              <AppText variant="title" style={styles.listTitle}>
-                {strings.calendar.yourMedicines}
-              </AppText>
               {groupByTimeOfDay(data.meds, () => meals ?? DEFAULT_MEAL_TIMES).map(({ group, items }) => (
                 <View key={group} style={styles.section}>
                   <AppText variant="label" tone="muted">

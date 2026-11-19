@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { listDoseEventsBetween, type Medication } from '@/db/repo';
+import { listDoseEventsBetween } from '@/db/repo';
 import { dayProgress, dosesOn, monthGridRange, weekOf } from '@/domain/calendar';
 import { formatMinute, type DoseStatus, type TimelineItem, type TimelineMedication } from '@/domain/timeline';
-import type { ISODate, MealTimes } from '@/domain/types';
+import type { ISODate } from '@/domain/types';
 import { useData, useMinuteTick } from '@/hooks/useData';
 import { localToday } from '@/domain/dates';
 import { strings } from '@/i18n/strings';
@@ -25,8 +25,11 @@ const STATUS_ICON: Record<DoseStatus, keyof typeof Ionicons.glyphMap> = {
   snoozed: 'moon-outline',
 };
 
-/** Week rings for one person's doses, with the full month a tap away and the chosen day's doses below. */
-export function MedicineCalendar({ personId, meds, meals }: { personId: string; meds: Medication[]; meals: MealTimes }) {
+/**
+ * Week rings for one person's doses. Tapping a day or the calendar icon opens the full month,
+ * which shows the chosen day's doses.
+ */
+export function MedicineCalendar({ personId, meds: timelineMeds }: { personId: string; meds: TimelineMedication[] }) {
   const { colors } = useTheme();
   const now = useMinuteTick();
   const today = localToday(now);
@@ -40,14 +43,6 @@ export function MedicineCalendar({ personId, meds, meals }: { personId: string; 
   const from = grid && grid.from < week[0] ? grid.from : week[0];
   const to = grid && grid.to > week[6] ? grid.to : week[6];
   const { data: events } = useData(() => listDoseEventsBetween(from, to), [from, to, personId]);
-
-  const timelineMeds = useMemo<TimelineMedication[]>(
-    () =>
-      meds
-        .filter((m) => m.active)
-        .map((m) => ({ id: m.id, personId: m.personId, name: m.name, strength: m.strength, schedule: m.schedule, meals })),
-    [meds, meals],
-  );
 
   const dayCache = useMemo(() => new Map<ISODate, TimelineItem[]>(), [timelineMeds, events, today, nowMinute]);
   const itemsOn = (d: ISODate) => {
@@ -112,9 +107,17 @@ export function MedicineCalendar({ personId, meds, meals }: { personId: string; 
   };
 
   return (
-    <View style={styles.gap}>
-      <WeekStrip selected={selected} today={today} markFor={markFor} onSelect={setSelected} onOpenMonth={() => setMonth(selected)} />
-      {detail(selected)}
+    <View>
+      <WeekStrip
+        selected={selected}
+        today={today}
+        markFor={markFor}
+        onSelect={(d) => {
+          setSelected(d);
+          setMonth(d);
+        }}
+        onOpenMonth={() => setMonth(selected)}
+      />
       <MonthCalendar
         visible={month != null}
         month={month ?? selected}
@@ -140,7 +143,6 @@ export function MedicineCalendar({ personId, meds, meals }: { personId: string; 
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  gap: { gap: spacing.md },
   card: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, padding: spacing.lg, gap: spacing.sm },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   doseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 32 },
