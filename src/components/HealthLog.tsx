@@ -1,14 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { router } from 'expo-router';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/AppText';
-import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
-import { ChipGroup } from '@/components/Form';
-import { Screen } from '@/components/Screen';
-import { deleteReading, deleteSideEffect, getPerson, listMedications, listReadings, listSideEffects } from '@/db/repo';
+import { AppText } from './AppText';
+import { Button } from './Button';
+import { Card } from './Card';
+import { ChipGroup } from './Form';
+import { deleteReading, deleteSideEffect, listMedications, listReadings, listSideEffects } from '@/db/repo';
 import { flagReading, formatReading, primaryValue, READING_TYPES, type Flag, type ReadingType } from '@/domain/readings';
 import { useData } from '@/hooks/useData';
 import { strings } from '@/i18n/strings';
@@ -17,23 +15,26 @@ import { radius, spacing, useTheme } from '@/theme';
 const H = strings.health;
 
 async function load(personId: string, type: ReadingType) {
-  const [person, readings, sideEffects, meds] = await Promise.all([
-    getPerson(personId),
+  const [readings, sideEffects, meds] = await Promise.all([
     listReadings(personId, type, 30),
     listSideEffects(personId, 20),
     listMedications(personId),
   ]);
-  return { person, readings, sideEffects, medName: new Map(meds.map((m) => [m.id, m.name])) };
+  return { personId, type, readings, sideEffects, medName: new Map(meds.map((m) => [m.id, m.name])) };
 }
 
 const when = (ms: number) =>
   new Date(ms).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
-export default function HealthLogScreen() {
-  const { personId } = useLocalSearchParams<{ personId: string }>();
+/**
+ * A person's health log: readings with a trend, and side effects. Shown as the Health section of
+ * the Medications tab; the tab's + button adds a reading of the selected type.
+ */
+export function HealthLog({ personId, type, onTypeChange }: { personId: string; type: ReadingType; onTypeChange: (t: ReadingType) => void }) {
   const { colors } = useTheme();
-  const [type, setType] = useState<ReadingType>('bp');
-  const { data } = useData(() => load(personId, type), [personId, type]);
+  const { data: loaded } = useData(() => load(personId, type), [personId, type]);
+  // Ignore data still loading for a previous profile or reading type.
+  const data = loaded && loaded.personId === personId && loaded.type === type ? loaded : undefined;
 
   const flagColor = (f: Flag) => (f === 'high' ? colors.danger : f === 'low' ? colors.warning : colors.success);
   const confirmDelete = (fn: () => Promise<void>) =>
@@ -48,13 +49,10 @@ export default function HealthLogScreen() {
   const values = trend.map((r) => primaryValue(r.value));
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const title = data?.person ? (data.person.isSelf ? strings.people.me : data.person.name) : '';
 
   return (
-    <Screen edges={['left', 'right', 'bottom']}>
-      <Stack.Screen options={{ title: `${H.title}${title ? ` · ${title}` : ''}` }} />
-
-      <ChipGroup value={type} onChange={setType} options={READING_TYPES.map((t) => ({ value: t, label: H.types[t] }))} />
+    <>
+      <ChipGroup value={type} onChange={onTypeChange} options={READING_TYPES.map((t) => ({ value: t, label: H.types[t] }))} />
 
       <Card>
         <AppText variant="label" tone="muted">
@@ -95,8 +93,6 @@ export default function HealthLogScreen() {
           </View>
         ) : null}
       </Card>
-
-      <Button label={H.add} onPress={() => router.push({ pathname: '/health/add', params: { personId, type } })} />
 
       <AppText variant="label" tone="muted">
         {H.recent}
@@ -139,7 +135,7 @@ export default function HealthLogScreen() {
       <AppText variant="caption" tone="muted">
         {H.rangesNote}
       </AppText>
-    </Screen>
+    </>
   );
 }
 

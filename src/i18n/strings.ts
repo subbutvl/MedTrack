@@ -61,8 +61,8 @@ export const strings = {
   },
   medications: {
     title: 'Medications',
-    segments: { medicines: 'Medicines', checkups: 'Checkups', doctors: 'Doctors' },
-    add: { medicines: 'Add medicine', checkups: 'Add checkup', doctors: 'Add doctor' },
+    segments: { medicines: 'Medicines', checkups: 'Checkups', doctors: 'Doctors', health: 'Health' },
+    add: { medicines: 'Add medicine', checkups: 'Add checkup', doctors: 'Add doctor', health: 'Add health entry' },
     emptyMedicines: 'No medicines yet',
     emptyMedicinesBody: 'Tap + to add a medicine.',
     emptyCheckups: 'No checkups yet',
