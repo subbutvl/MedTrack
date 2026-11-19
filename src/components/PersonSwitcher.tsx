@@ -26,13 +26,18 @@ export function PersonSwitcher() {
         accessibilityLabel={`${strings.people.viewing} ${name}. ${strings.people.switchTitle}`}
         onPress={() => setOpen(true)}
         hitSlop={6}
-        style={({ pressed }) => [styles.trigger, { backgroundColor: colors.surfaceAlt, opacity: pressed ? 0.8 : 1 }]}
+        style={({ pressed }) => [styles.trigger, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
       >
-        <Avatar name={name} color={person.color} size={28} />
-        <AppText variant="bodyStrong" numberOfLines={1} style={styles.shrink}>
-          {name}
-        </AppText>
-        <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+        <Avatar name={name} color={person.color} size={36} />
+        <View style={styles.shrink}>
+          <AppText variant="caption" tone="muted" style={styles.kicker}>
+            {strings.people.profileLabel}
+          </AppText>
+          <AppText variant="bodyStrong" numberOfLines={1}>
+            {name}
+          </AppText>
+        </View>
+        <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)} statusBarTranslucent>
@@ -103,7 +108,9 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.xs,
     paddingRight: spacing.md,
     borderRadius: radius.pill,
+    borderWidth: 1,
   },
+  kicker: { fontSize: 10, lineHeight: 12, letterSpacing: 0.8, textTransform: 'uppercase' },
   shrink: { flexShrink: 1 },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10, 37, 64, 0.45)' },
   sheet: {
