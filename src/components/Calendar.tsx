@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendRing: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(2, 18, 41, 0.45)' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(10, 37, 64, 0.45)' },
   sheet: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, marginTop: spacing.sm },
   modalHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },

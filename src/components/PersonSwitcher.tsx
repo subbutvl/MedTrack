@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   shrink: { flexShrink: 1 },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(2, 18, 41, 0.45)' },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(10, 37, 64, 0.45)' },
   sheet: {
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
