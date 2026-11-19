@@ -116,6 +116,7 @@ export function MedicineCalendar({ personId, meds: timelineMeds }: { personId: s
           setSelected(d);
           setMonth(d);
         }}
+        onNavigate={setSelected}
         onOpenMonth={() => setMonth(selected)}
       />
       <MonthCalendar
