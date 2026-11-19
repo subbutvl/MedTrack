@@ -6,10 +6,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
+import { CheckupCalendar } from '@/components/CheckupCalendar';
 import { CheckupRow } from '@/components/CheckupRow';
 import { CopySearchButton } from '@/components/CopySearchButton';
 import { EmptyState } from '@/components/EmptyState';
 import { HealthLog } from '@/components/HealthLog';
+import { MedicineCalendar } from '@/components/MedicineCalendar';
 import { Screen } from '@/components/Screen';
 import { getGlobalMealTimes, listCheckups, listDoctors, listMedications, markVisited, type Checkup } from '@/db/repo';
 import { localToday } from '@/domain/dates';
@@ -119,47 +121,53 @@ export default function MedicationsScreen() {
           data.meds.length === 0 ? (
             <EmptyState icon="medkit-outline" title={M.emptyMedicines} body={M.emptyMedicinesBody} />
           ) : (
-            groupByTimeOfDay(data.meds, () => meals ?? DEFAULT_MEAL_TIMES).map(({ group, items }) => (
-              <View key={group} style={styles.section}>
-                <AppText variant="label" tone="muted">
-                  {M.groups[group]}
-                </AppText>
-                {items.map(({ med: m, minute }) => {
-                  const doctor = m.doctorId ? data.doctorName.get(m.doctorId) : undefined;
-                  return (
-                    <Pressable
-                      key={m.id}
-                      accessibilityRole="button"
-                      onPress={() => router.push({ pathname: '/medication/edit', params: { id: m.id } })}
-                      style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
-                    >
-                      <View style={styles.flex}>
-                        <AppText variant="heading">
-                          {m.name}
-                          {m.strength ? <AppText tone="muted"> {m.strength}</AppText> : null}
-                        </AppText>
-                        {meals ? (
-                          <AppText variant="caption" tone="muted">
-                            {minute != null ? `${formatMinute(minute)} · ` : ''}
-                            {describeSchedule(m.schedule, meals)}
+            <>
+              <MedicineCalendar personId={personId} meds={data.meds} meals={meals ?? DEFAULT_MEAL_TIMES} />
+              <AppText variant="title" style={styles.listTitle}>
+                {strings.calendar.yourMedicines}
+              </AppText>
+              {groupByTimeOfDay(data.meds, () => meals ?? DEFAULT_MEAL_TIMES).map(({ group, items }) => (
+                <View key={group} style={styles.section}>
+                  <AppText variant="label" tone="muted">
+                    {M.groups[group]}
+                  </AppText>
+                  {items.map(({ med: m, minute }) => {
+                    const doctor = m.doctorId ? data.doctorName.get(m.doctorId) : undefined;
+                    return (
+                      <Pressable
+                        key={m.id}
+                        accessibilityRole="button"
+                        onPress={() => router.push({ pathname: '/medication/edit', params: { id: m.id } })}
+                        style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+                      >
+                        <View style={styles.flex}>
+                          <AppText variant="heading">
+                            {m.name}
+                            {m.strength ? <AppText tone="muted"> {m.strength}</AppText> : null}
                           </AppText>
-                        ) : null}
-                        {doctor ? (
-                          <View style={styles.doctorLine}>
-                            <Ionicons name="person-outline" size={13} color={colors.textMuted} />
-                            <AppText variant="caption" tone="muted" numberOfLines={1} style={styles.flex}>
-                              {doctor}
+                          {meals ? (
+                            <AppText variant="caption" tone="muted">
+                              {minute != null ? `${formatMinute(minute)} · ` : ''}
+                              {describeSchedule(m.schedule, meals)}
                             </AppText>
-                          </View>
-                        ) : null}
-                      </View>
-                      <CopySearchButton name={m.strength ? `${m.name} ${m.strength}` : m.name} iconOnly />
-                      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))
+                          ) : null}
+                          {doctor ? (
+                            <View style={styles.doctorLine}>
+                              <Ionicons name="person-outline" size={13} color={colors.textMuted} />
+                              <AppText variant="caption" tone="muted" numberOfLines={1} style={styles.flex}>
+                                {doctor}
+                              </AppText>
+                            </View>
+                          ) : null}
+                        </View>
+                        <CopySearchButton name={m.strength ? `${m.name} ${m.strength}` : m.name} iconOnly />
+                        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
+            </>
           )
         ) : null}
 
@@ -167,15 +175,21 @@ export default function MedicationsScreen() {
           data.checkups.length === 0 ? (
             <EmptyState icon="calendar-outline" title={M.emptyCheckups} body={M.emptyCheckupsBody} />
           ) : (
-            data.checkups.map((c) => (
-              <CheckupRow
-                key={c.id}
-                checkup={c}
-                today={today}
-                onPress={() => router.push({ pathname: '/checkup/edit', params: { id: c.id } })}
-                onVisited={() => confirmVisited(c)}
-              />
-            ))
+            <>
+              <CheckupCalendar personId={personId} checkups={data.checkups} />
+              <AppText variant="title" style={styles.listTitle}>
+                {strings.calendar.yourCheckups}
+              </AppText>
+              {data.checkups.map((c) => (
+                <CheckupRow
+                  key={c.id}
+                  checkup={c}
+                  today={today}
+                  onPress={() => router.push({ pathname: '/checkup/edit', params: { id: c.id } })}
+                  onVisited={() => confirmVisited(c)}
+                />
+              ))}
+            </>
           )
         ) : null}
 
@@ -228,6 +242,7 @@ const styles = StyleSheet.create({
   segmentOption: { flex: 1, minHeight: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth },
   section: { gap: spacing.sm },
+  listTitle: { marginTop: spacing.md },
   doctorLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
   call: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start' },
   fab: {
