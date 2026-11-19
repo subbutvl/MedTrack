@@ -258,6 +258,23 @@ export async function listDoseEvents(date: ISODate): Promise<LoggedEvent[]> {
   }));
 }
 
+/** Logged doses for every day from `from` to `to`, inclusive, for the calendar views. */
+export async function listDoseEventsBetween(from: ISODate, to: ISODate): Promise<LoggedEvent[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<EventRow>(
+    'SELECT medication_id, planned_date, slot_index, status, snoozed_until FROM dose_event WHERE planned_date BETWEEN ? AND ? AND deleted = 0',
+    from,
+    to,
+  );
+  return rows.map((r) => ({
+    medicationId: r.medication_id,
+    plannedDate: r.planned_date,
+    slotIndex: r.slot_index,
+    status: r.status,
+    snoozedUntilMinute: r.snoozed_until,
+  }));
+}
+
 export type DoseRef = { medicationId: string; date: ISODate; minute: MinuteOfDay; slotIndex: number; amount: number };
 
 /**
@@ -471,6 +488,17 @@ export async function listVisits(checkupId: string): Promise<CheckupVisit[]> {
   return db.getAllAsync<CheckupVisit>(
     'SELECT id, visit_date AS visitDate, notes FROM checkup_visit WHERE checkup_id = ? AND deleted = 0 ORDER BY visit_date DESC',
     checkupId,
+  );
+}
+
+/** Every recorded visit to one person's checkups, for the calendar view. */
+export async function listVisitsForPerson(personId: string): Promise<{ checkupId: string; visitDate: ISODate }[]> {
+  const db = await getDb();
+  return db.getAllAsync<{ checkupId: string; visitDate: ISODate }>(
+    `SELECT v.checkup_id AS checkupId, v.visit_date AS visitDate FROM checkup_visit v
+     JOIN checkup c ON c.id = v.checkup_id
+     WHERE c.person_id = ? AND c.deleted = 0 AND v.deleted = 0`,
+    personId,
   );
 }
 
