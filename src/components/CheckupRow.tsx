@@ -8,7 +8,22 @@ import { strings } from '@/i18n/strings';
 import { radius, spacing, useTheme } from '@/theme';
 import { AppText } from './AppText';
 
-export function CheckupRow({ checkup, today, subtitle, onPress }: { checkup: Checkup; today: string; subtitle?: string; onPress: () => void }) {
+/** Within this many days of the next date (or overdue), the row offers a one-tap "Visited". */
+const VISIT_WINDOW_DAYS = 7;
+
+export function CheckupRow({
+  checkup,
+  today,
+  subtitle,
+  onPress,
+  onVisited,
+}: {
+  checkup: Checkup;
+  today: string;
+  subtitle?: string;
+  onPress: () => void;
+  onVisited?: () => void;
+}) {
   const { colors } = useTheme();
   const S = strings.checkups;
   const days = checkup.nextDate ? daysBetween(today, checkup.nextDate) : null;
@@ -30,9 +45,25 @@ export function CheckupRow({ checkup, today, subtitle, onPress }: { checkup: Che
           {[checkup.nextDate, describeRecurrence(checkup.recurrence), subtitle].filter(Boolean).join(' · ')}
         </AppText>
       </View>
-      <AppText variant="label" tone={tone}>
-        {when}
-      </AppText>
+      <View style={styles.side}>
+        <AppText variant="label" tone={tone}>
+          {when}
+        </AppText>
+        {onVisited && days != null && days <= VISIT_WINDOW_DAYS ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={S.visitedConfirm(checkup.title)}
+            onPress={onVisited}
+            hitSlop={6}
+            style={({ pressed }) => [styles.visited, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Ionicons name="checkmark" size={14} color={colors.onPrimary} />
+            <AppText variant="caption" tone="onPrimary">
+              {S.visitedShort}
+            </AppText>
+          </Pressable>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -41,4 +72,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth },
   icon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1 },
+  side: { alignItems: 'flex-end', gap: spacing.sm },
+  visited: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, minHeight: 32 },
 });
