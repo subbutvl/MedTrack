@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { monthGrid, shiftMonth, weekOf } from '@/domain/calendar';
@@ -263,56 +263,67 @@ export function MonthCalendar({
   footer?: ReactNode;
 }) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const weeks = monthGrid(month);
   const title = fmt(`${month.slice(0, 7)}-01`, { month: 'long', year: 'numeric' });
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.flex, { backgroundColor: colors.background }]}>
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-          <IconButton icon="chevron-back" label={C.previousMonth} onPress={() => onMonthChange(shiftMonth(month, -1))} />
-          <AppText variant="title" style={[styles.flex, styles.center]}>
-            {title}
-          </AppText>
-          <IconButton icon="chevron-forward" label={C.nextMonth} onPress={() => onMonthChange(shiftMonth(month, 1))} />
-        </View>
-        <ScrollView contentContainerStyle={styles.modalBody}>
-          <View style={[styles.strip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <WeekdayHeadings />
-            {weeks.map((week, i) => (
-              <View key={i} style={styles.weekRow}>
-                {week.map((d, j) =>
-                  d ? (
-                    <DayCell key={d} date={d} mark={markFor(d)} selected={d === selected} isToday={d === today} size={40} onPress={() => onSelect(d)} />
-                  ) : (
-                    <View key={`blank-${j}`} style={styles.cell} />
-                  ),
-                )}
-              </View>
-            ))}
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+      <View style={styles.backdrop}>
+        {/* The gap above the sheet closes it, like other bottom sheets. */}
+        <Pressable accessibilityLabel={C.done} onPress={onClose} style={{ height: insets.top + spacing.xl }} />
+        <View style={[styles.sheet, { backgroundColor: colors.background, paddingLeft: insets.left, paddingRight: insets.right }]}>
+          <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <IconButton icon="chevron-back" label={C.previousMonth} onPress={() => onMonthChange(shiftMonth(month, -1))} />
+            <AppText variant="title" style={[styles.flex, styles.center]}>
+              {title}
+            </AppText>
+            <IconButton icon="chevron-forward" label={C.nextMonth} onPress={() => onMonthChange(shiftMonth(month, 1))} />
           </View>
-          {footer}
-        </ScrollView>
-        <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
-          <Pressable accessibilityRole="button" onPress={() => {
-              onMonthChange(today);
-              onSelect(today);
-            }} hitSlop={6} style={styles.footerButton}>
-            <AppText variant="bodyStrong" tone="primary">
-              {C.today}
-            </AppText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={({ pressed }) => [styles.doneButton, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <AppText variant="bodyStrong" tone="onPrimary">
-              {C.done}
-            </AppText>
-          </Pressable>
+          <ScrollView contentContainerStyle={styles.modalBody}>
+            <View style={[styles.strip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <WeekdayHeadings />
+              {weeks.map((week, i) => (
+                <View key={i} style={styles.weekRow}>
+                  {week.map((d, j) =>
+                    d ? (
+                      <DayCell key={d} date={d} mark={markFor(d)} selected={d === selected} isToday={d === today} size={40} onPress={() => onSelect(d)} />
+                    ) : (
+                      <View key={`blank-${j}`} style={styles.cell} />
+                    ),
+                  )}
+                </View>
+              ))}
+            </View>
+            {footer}
+          </ScrollView>
+          <View style={[styles.modalFooter, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingBottom: insets.bottom + spacing.lg }]}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                onMonthChange(today);
+                onSelect(today);
+              }}
+              hitSlop={6}
+              style={styles.footerButton}
+            >
+              <AppText variant="bodyStrong" tone="primary">
+                {C.today}
+              </AppText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={({ pressed }) => [styles.doneButton, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <AppText variant="bodyStrong" tone="onPrimary">
+                {C.done}
+              </AppText>
+            </Pressable>
+          </View>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -347,6 +358,9 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendRing: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(2, 18, 41, 0.45)' },
+  sheet: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, marginTop: spacing.sm },
   modalHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
   modalBody: { padding: spacing.lg, gap: spacing.lg },
   modalFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth },
