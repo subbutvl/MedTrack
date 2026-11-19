@@ -87,7 +87,6 @@ export const strings = {
     checkupKinds: { visited: 'Visited', scheduled: 'Scheduled', overdue: 'Overdue', expected: 'Expected' },
     expectedHint: 'Expected dates assume each visit happens on time.',
     legendTaken: 'Ring fills as doses are taken',
-    yourMedicines: 'Your medicines',
     yourCheckups: 'Your checkups',
   },
   checkups: {
