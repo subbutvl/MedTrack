@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { DoseCard } from '@/components/DoseCard';
+import { PersonSwitcher } from '@/components/PersonSwitcher';
 import { EmptyState } from '@/components/EmptyState';
 import { Screen } from '@/components/Screen';
 import { clearDose, getGlobalMealTimes, listDoseEvents, listMedications, listPeople, listStock, logDose, type DoseRef } from '@/db/repo';
@@ -17,11 +18,12 @@ import { buildTimeline, sectionFor, type TimelineItem } from '@/domain/timeline'
 import { useData, useMinuteTick } from '@/hooks/useData';
 import { strings } from '@/i18n/strings';
 import { scheduleSnooze } from '@/services/reminders';
+import { useActivePerson } from '@/state/ActivePerson';
 import { radius, spacing, useTheme } from '@/theme';
 
 const SNOOZE_OPTIONS = [10, 30, 60];
 
-async function loadToday(date: string) {
+async function loadToday(date: string, personId: string | undefined) {
   const [people, meds, events, stock, globalMeals] = await Promise.all([
     listPeople(),
     listMedications(),
@@ -31,7 +33,7 @@ async function loadToday(date: string) {
   ]);
   const people_ = new Map(people.map((p) => [p.id, p]));
   const timelineMeds = meds
-    .filter((m) => m.active && people_.has(m.personId))
+    .filter((m) => m.active && people_.has(m.personId) && m.personId === personId)
     .map((m) => ({
       id: m.id,
       personId: m.personId,
@@ -41,13 +43,15 @@ async function loadToday(date: string) {
       meals: people_.get(m.personId)?.mealTimes ?? globalMeals,
     }));
 
-  // Refill warnings: sum daily use across every medicine sharing a stock item.
+  // Refill warnings: sum daily use across every medicine sharing a stock item, and show the
+  // warning to whoever's medicines draw from it.
   const lowStock = stock
+    .filter((s) => meds.some((m) => m.stockItemId === s.id && m.personId === personId))
     .map((s) => {
-      const uses = timelineMeds
-        .filter((m) => meds.find((x) => x.id === m.id)?.stockItemId === s.id)
-        .map((m) => dailyUse(m.schedule, date, m.meals));
-      return { stock: s, ...forecastStock(s.quantity, uses, s.thresholdDays) };
+      const usesAll = meds
+        .filter((m) => m.active && m.stockItemId === s.id && people_.has(m.personId))
+        .map((m) => dailyUse(m.schedule, date, people_.get(m.personId)?.mealTimes ?? globalMeals));
+      return { stock: s, ...forecastStock(s.quantity, usesAll, s.thresholdDays) };
     })
     .filter((x) => x.low);
 
@@ -59,13 +63,13 @@ export default function TodayScreen() {
   const now = useMinuteTick();
   const date = localToday(now);
   const nowMinute = now.getHours() * 60 + now.getMinutes();
-  const { data } = useData(() => loadToday(date), [date]);
+  const { person } = useActivePerson();
+  const { data } = useData(() => loadToday(date, person?.id), [date, person?.id]);
 
   const timeline = useMemo(
     () => (data ? buildTimeline(data.timelineMeds, data.events, date, nowMinute) : []),
     [data, date, nowMinute],
   );
-  const multiPerson = (data?.people.size ?? 0) > 1;
   const done = timeline.filter((t) => t.status === 'taken' || t.status === 'skipped').length;
 
   const sections = useMemo(() => {
@@ -104,6 +108,20 @@ export default function TodayScreen() {
     <Screen
       header={
         <>
+          <View style={styles.headerRow}>
+            <PersonSwitcher />
+            {person ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={strings.health.open}
+                hitSlop={8}
+                onPress={() => router.push({ pathname: '/health/[personId]', params: { personId: person.id } })}
+                style={[styles.iconButton, { backgroundColor: colors.surfaceAlt }]}
+              >
+                <Ionicons name="pulse-outline" size={20} color={colors.primary} />
+              </Pressable>
+            ) : null}
+          </View>
           <View>
             <AppText variant="label" tone="muted">
               {heading}
@@ -136,7 +154,7 @@ export default function TodayScreen() {
       {data && timeline.length === 0 ? (
         <>
           <EmptyState icon="medkit-outline" title={strings.today.emptyTitle} body={strings.today.emptyBody} />
-          <Button label={strings.today.addMedicine} onPress={() => router.push('/people')} />
+          <Button label={strings.today.addMedicine} onPress={() => router.navigate('/medications')} />
         </>
       ) : null}
 
@@ -149,7 +167,6 @@ export default function TodayScreen() {
             <DoseCard
               key={item.key}
               item={item}
-              personName={multiPerson ? data?.people.get(item.personId)?.name : undefined}
               onTaken={() => void logDose(refOf(item), 'taken')}
               onSkip={() => void logDose(refOf(item), 'skipped')}
               onSnooze={() => snooze(item)}
@@ -164,6 +181,8 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   section: { gap: spacing.sm },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  iconButton: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
   progressTrack: { height: 6, borderRadius: radius.pill, overflow: 'hidden' },
