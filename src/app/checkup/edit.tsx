@@ -67,6 +67,11 @@ export default function EditCheckupScreen() {
     })();
   }, [params.id, params.personId]);
 
+  // The active profile can finish loading after this screen opens; pick it up for a new checkup.
+  useEffect(() => {
+    if (!params.id && !personId && person) setPersonId(person.id);
+  }, [params.id, personId, person]);
+
   useEffect(() => {
     if (personId) listDoctors(personId).then(setDoctors);
   }, [personId]);
@@ -86,7 +91,7 @@ export default function EditCheckupScreen() {
     const needsDate = rec.kind === 'preset' || rec.kind === 'interval' || (rec.kind === 'once' && !params.id);
     if (needsDate && !nextDate) next.next = S.nextDateRequired;
     setErrors(next);
-    if (Object.keys(next).length || !parsed.value) return;
+    if (Object.keys(next).length || !parsed.value || !personId) return;
 
     await saveCheckup(
       {
