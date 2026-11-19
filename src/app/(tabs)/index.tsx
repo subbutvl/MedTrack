@@ -20,7 +20,7 @@ import { useData, useMinuteTick } from '@/hooks/useData';
 import { strings } from '@/i18n/strings';
 import { scheduleSnooze } from '@/services/reminders';
 import { useActivePerson } from '@/state/ActivePerson';
-import { radius, spacing, useTheme } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
 const SNOOZE_OPTIONS = [10, 30, 60];
 
@@ -105,28 +105,17 @@ export default function TodayScreen() {
     }
   };
 
-  const heading = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const heading = `${strings.today.title}, ${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   return (
     <Screen
       header={
         <>
           <PersonSwitcher />
-          <View>
-            <AppText variant="label" tone="muted">
-              {heading}
-            </AppText>
-            <AppText variant="display">{strings.today.title}</AppText>
-            {timeline.length > 0 ? (
-              <AppText tone="muted">{done === timeline.length ? strings.today.allDone : strings.today.progress(done, timeline.length)}</AppText>
-            ) : null}
-          </View>
+          {data && person ? <MedicineCalendar personId={person.id} title={heading} meds={data.timelineMeds} /> : null}
           {timeline.length > 0 ? (
-            <View style={[styles.progressTrack, { backgroundColor: colors.surfaceAlt }]}>
-              <View style={[styles.progressFill, { backgroundColor: colors.accent, width: `${(done / timeline.length) * 100}%` }]} />
-            </View>
+            <AppText tone="muted">{done === timeline.length ? strings.today.allDone : strings.today.progress(done, timeline.length)}</AppText>
           ) : null}
-          {data && person && data.timelineMeds.length > 0 ? <MedicineCalendar personId={person.id} meds={data.timelineMeds} /> : null}
         </>
       }
     >
@@ -173,6 +162,4 @@ const styles = StyleSheet.create({
   section: { gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
-  progressTrack: { height: 6, borderRadius: radius.pill, overflow: 'hidden' },
-  progressFill: { height: 6, borderRadius: radius.pill },
 });
