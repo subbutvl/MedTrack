@@ -101,22 +101,26 @@ export default function TodayScreen() {
   const heading = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <Screen>
-      <View>
-        <AppText variant="label" tone="muted">
-          {heading}
-        </AppText>
-        <AppText variant="display">{strings.today.title}</AppText>
-        {timeline.length > 0 ? (
-          <AppText tone="muted">{done === timeline.length ? strings.today.allDone : strings.today.progress(done, timeline.length)}</AppText>
-        ) : null}
-      </View>
-
-      {timeline.length > 0 ? (
-        <View style={[styles.progressTrack, { backgroundColor: colors.surfaceAlt }]}>
-          <View style={[styles.progressFill, { backgroundColor: colors.accent, width: `${(done / timeline.length) * 100}%` }]} />
-        </View>
-      ) : null}
+    <Screen
+      header={
+        <>
+          <View>
+            <AppText variant="label" tone="muted">
+              {heading}
+            </AppText>
+            <AppText variant="display">{strings.today.title}</AppText>
+            {timeline.length > 0 ? (
+              <AppText tone="muted">{done === timeline.length ? strings.today.allDone : strings.today.progress(done, timeline.length)}</AppText>
+            ) : null}
+          </View>
+          {timeline.length > 0 ? (
+            <View style={[styles.progressTrack, { backgroundColor: colors.surfaceAlt }]}>
+              <View style={[styles.progressFill, { backgroundColor: colors.accent, width: `${(done / timeline.length) * 100}%` }]} />
+            </View>
+          ) : null}
+        </>
+      }
+    >
 
       {data?.lowStock.map(({ stock, daysLeft }) => (
         <Card key={stock.id} style={{ borderColor: colors.warning }}>
