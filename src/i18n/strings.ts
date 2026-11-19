@@ -26,7 +26,6 @@ export const strings = {
     sectionPending: (n: number) => `${n} Pending`,
     takenPill: (taken: number, total: number) => `${taken} of ${total} Taken · ${Math.round((taken / total) * 100)}%`,
     doseCount: (n: number) => (n === 1 ? '1 dose' : `${n} doses`),
-    tonight: 'Tonight',
     openCalendar: 'Open calendar',
     snoozeTitle: 'Snooze for',
     sections: { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' },

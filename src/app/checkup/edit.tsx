@@ -11,13 +11,11 @@ import {
   deleteCheckup,
   getCheckup,
   listDoctors,
-  listPeople,
   listVisits,
   markVisited,
   saveCheckup,
   type CheckupVisit,
   type Doctor,
-  type Person,
 } from '@/db/repo';
 import {
   CHECKUP_PRESETS,
@@ -28,6 +26,7 @@ import {
 } from '@/domain/checkups';
 import { localToday } from '@/domain/dates';
 import { strings } from '@/i18n/strings';
+import { useActivePerson } from '@/state/ActivePerson';
 import { spacing } from '@/theme';
 
 const S = strings.checkups;
@@ -36,9 +35,10 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export default function EditCheckupScreen() {
   const params = useLocalSearchParams<{ id?: string; personId?: string }>();
   const [loaded, setLoaded] = useState(false);
-  const [people, setPeople] = useState<Person[]>([]);
+  // New checkups belong to the profile being viewed; the person isn't chosen here.
+  const { person } = useActivePerson();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [personId, setPersonId] = useState(params.personId ?? '');
+  const [personId, setPersonId] = useState(params.personId ?? person?.id ?? '');
   const [doctorId, setDoctorId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
@@ -50,8 +50,6 @@ export default function EditCheckupScreen() {
 
   useEffect(() => {
     (async () => {
-      const ppl = await listPeople();
-      setPeople(ppl);
       if (params.id) {
         const c = await getCheckup(params.id);
         if (c) {
@@ -64,12 +62,15 @@ export default function EditCheckupScreen() {
           setNextDate(c.nextDate ?? '');
           setVisits(await listVisits(c.id));
         }
-      } else if (!params.personId && ppl[0]) {
-        setPersonId(ppl[0].id);
       }
       setLoaded(true);
     })();
   }, [params.id, params.personId]);
+
+  // The active profile can finish loading after this screen opens; pick it up for a new checkup.
+  useEffect(() => {
+    if (!params.id && !personId && person) setPersonId(person.id);
+  }, [params.id, personId, person]);
 
   useEffect(() => {
     if (personId) listDoctors(personId).then(setDoctors);
@@ -90,7 +91,7 @@ export default function EditCheckupScreen() {
     const needsDate = rec.kind === 'preset' || rec.kind === 'interval' || (rec.kind === 'once' && !params.id);
     if (needsDate && !nextDate) next.next = S.nextDateRequired;
     setErrors(next);
-    if (Object.keys(next).length || !parsed.value) return;
+    if (Object.keys(next).length || !parsed.value || !personId) return;
 
     await saveCheckup(
       {
@@ -134,18 +135,6 @@ export default function EditCheckupScreen() {
         <Input value={title} onChangeText={setTitle} placeholder={S.namePlaceholder} autoFocus={!params.id} />
       </Field>
 
-      {people.length > 1 ? (
-        <Field label={S.person}>
-          <ChipGroup
-            value={personId}
-            onChange={(v) => {
-              setPersonId(v);
-              setDoctorId(null);
-            }}
-            options={people.map((p) => ({ value: p.id, label: p.isSelf ? strings.people.me : p.name }))}
-          />
-        </Field>
-      ) : null}
 
       {doctors.length ? (
         <Field label={S.doctor}>
