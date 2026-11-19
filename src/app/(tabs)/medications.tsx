@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
@@ -11,8 +11,11 @@ import { CopySearchButton } from '@/components/CopySearchButton';
 import { EmptyState } from '@/components/EmptyState';
 import { HealthLog } from '@/components/HealthLog';
 import { Screen } from '@/components/Screen';
-import { getGlobalMealTimes, listCheckups, listDoctors, listMedications } from '@/db/repo';
+import { getGlobalMealTimes, listCheckups, listDoctors, listMedications, markVisited, type Checkup } from '@/db/repo';
 import { localToday } from '@/domain/dates';
+import { groupByTimeOfDay } from '@/domain/medicineGroups';
+import { formatMinute } from '@/domain/timeline';
+import { DEFAULT_MEAL_TIMES } from '@/domain/types';
 import { describeSchedule } from '@/domain/describe';
 import type { ReadingType } from '@/domain/readings';
 import { useData } from '@/hooks/useData';
@@ -25,13 +28,14 @@ const SEGMENTS: Segment[] = ['medicines', 'checkups', 'doctors', 'health'];
 const M = strings.medications;
 
 async function load(personId: string) {
-  const [meds, global, checkups, doctors] = await Promise.all([
+  const [meds, global, checkups, doctors, allDoctors] = await Promise.all([
     listMedications(personId),
     getGlobalMealTimes(),
     listCheckups(personId),
     listDoctors(personId),
+    listDoctors(),
   ]);
-  return { personId, meds, global, checkups, doctors };
+  return { personId, meds, global, checkups, doctors, doctorName: new Map(allDoctors.map((d) => [d.id, d.name])) };
 }
 
 export default function MedicationsScreen() {
@@ -55,6 +59,19 @@ export default function MedicationsScreen() {
   const data = loaded && loaded.personId === personId ? loaded : undefined;
   const meals = person?.mealTimes ?? data?.global;
   const today = localToday();
+
+  // Records today's visit, moves the checkup to its next date and re-plans the reminders.
+  const confirmVisited = (c: Checkup) =>
+    Alert.alert(strings.checkups.visitedConfirm(c.title), strings.checkups.visitedConfirmBody, [
+      { text: strings.common.cancel, style: 'cancel' },
+      {
+        text: strings.checkups.markVisited,
+        onPress: async () => {
+          const next = await markVisited(c.id, localToday());
+          Alert.alert(next ? strings.checkups.visitedNext(next) : strings.checkups.visitedNoNext);
+        },
+      },
+    ]);
 
   const add = () => {
     if (!personId) return;
@@ -102,29 +119,46 @@ export default function MedicationsScreen() {
           data.meds.length === 0 ? (
             <EmptyState icon="medkit-outline" title={M.emptyMedicines} body={M.emptyMedicinesBody} />
           ) : (
-            data.meds.map((m) => (
-              <Pressable
-                key={m.id}
-                accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/medication/edit', params: { id: m.id } })}
-                style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
-              >
-                <View style={styles.flex}>
-                  <AppText variant="heading">
-                    {m.name}
-                    {m.strength ? <AppText tone="muted"> {m.strength}</AppText> : null}
-                  </AppText>
-                  {meals ? (
-                    <AppText variant="caption" tone="muted">
-                      {describeSchedule(m.schedule, meals)}
-                    </AppText>
-                  ) : null}
-                  <View style={{ marginTop: spacing.sm }}>
-                    <CopySearchButton name={m.strength ? `${m.name} ${m.strength}` : m.name} />
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </Pressable>
+            groupByTimeOfDay(data.meds, () => meals ?? DEFAULT_MEAL_TIMES).map(({ group, items }) => (
+              <View key={group} style={styles.section}>
+                <AppText variant="label" tone="muted">
+                  {M.groups[group]}
+                </AppText>
+                {items.map(({ med: m, minute }) => {
+                  const doctor = m.doctorId ? data.doctorName.get(m.doctorId) : undefined;
+                  return (
+                    <Pressable
+                      key={m.id}
+                      accessibilityRole="button"
+                      onPress={() => router.push({ pathname: '/medication/edit', params: { id: m.id } })}
+                      style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+                    >
+                      <View style={styles.flex}>
+                        <AppText variant="heading">
+                          {m.name}
+                          {m.strength ? <AppText tone="muted"> {m.strength}</AppText> : null}
+                        </AppText>
+                        {meals ? (
+                          <AppText variant="caption" tone="muted">
+                            {minute != null ? `${formatMinute(minute)} · ` : ''}
+                            {describeSchedule(m.schedule, meals)}
+                          </AppText>
+                        ) : null}
+                        {doctor ? (
+                          <View style={styles.doctorLine}>
+                            <Ionicons name="person-outline" size={13} color={colors.textMuted} />
+                            <AppText variant="caption" tone="muted" numberOfLines={1} style={styles.flex}>
+                              {doctor}
+                            </AppText>
+                          </View>
+                        ) : null}
+                      </View>
+                      <CopySearchButton name={m.strength ? `${m.name} ${m.strength}` : m.name} iconOnly />
+                      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                    </Pressable>
+                  );
+                })}
+              </View>
             ))
           )
         ) : null}
@@ -134,7 +168,13 @@ export default function MedicationsScreen() {
             <EmptyState icon="calendar-outline" title={M.emptyCheckups} body={M.emptyCheckupsBody} />
           ) : (
             data.checkups.map((c) => (
-              <CheckupRow key={c.id} checkup={c} today={today} onPress={() => router.push({ pathname: '/checkup/edit', params: { id: c.id } })} />
+              <CheckupRow
+                key={c.id}
+                checkup={c}
+                today={today}
+                onPress={() => router.push({ pathname: '/checkup/edit', params: { id: c.id } })}
+                onVisited={() => confirmVisited(c)}
+              />
             ))
           )
         ) : null}
@@ -187,6 +227,8 @@ const styles = StyleSheet.create({
   segment: { flexDirection: 'row', borderRadius: radius.md, padding: spacing.xs, gap: spacing.xs, marginTop: spacing.xs },
   segmentOption: { flex: 1, minHeight: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth },
+  section: { gap: spacing.sm },
+  doctorLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
   call: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start' },
   fab: {
     position: 'absolute',
