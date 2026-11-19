@@ -126,11 +126,10 @@ export default function TodayScreen() {
               <View style={[styles.progressFill, { backgroundColor: colors.accent, width: `${(done / timeline.length) * 100}%` }]} />
             </View>
           ) : null}
+          {data && person && data.timelineMeds.length > 0 ? <MedicineCalendar personId={person.id} meds={data.timelineMeds} /> : null}
         </>
       }
     >
-      {data && person && data.timelineMeds.length > 0 ? <MedicineCalendar personId={person.id} meds={data.timelineMeds} /> : null}
-
       {data?.lowStock.map(({ stock, daysLeft }) => (
         <Card key={stock.id} style={{ borderColor: colors.warning }}>
           <View style={styles.row}>

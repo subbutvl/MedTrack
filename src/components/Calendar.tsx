@@ -138,12 +138,16 @@ export function WeekStrip({
   today,
   markFor,
   onSelect,
+  onNavigate = onSelect,
   onOpenMonth,
 }: {
   selected: ISODate;
   today: ISODate;
   markFor: (d: ISODate) => DayMark | undefined;
+  /** A tap on a day. */
   onSelect: (d: ISODate) => void;
+  /** The arrows and Today button moving the week; defaults to onSelect. */
+  onNavigate?: (d: ISODate) => void;
   onOpenMonth: () => void;
 }) {
   const { colors } = useTheme();
@@ -155,14 +159,14 @@ export function WeekStrip({
           {weekTitle(days, today)}
         </AppText>
         {!days.includes(today) ? (
-          <Pressable accessibilityRole="button" onPress={() => onSelect(today)} hitSlop={6} style={styles.todayButton}>
+          <Pressable accessibilityRole="button" onPress={() => onNavigate(today)} hitSlop={6} style={styles.todayButton}>
             <AppText variant="label" tone="primary">
               {C.today}
             </AppText>
           </Pressable>
         ) : null}
-        <IconButton icon="chevron-back" label={C.previousWeek} onPress={() => onSelect(addDays(selected, -7))} />
-        <IconButton icon="chevron-forward" label={C.nextWeek} onPress={() => onSelect(addDays(selected, 7))} />
+        <IconButton icon="chevron-back" label={C.previousWeek} onPress={() => onNavigate(addDays(selected, -7))} />
+        <IconButton icon="chevron-forward" label={C.nextWeek} onPress={() => onNavigate(addDays(selected, 7))} />
         <IconButton icon="calendar-outline" label={C.openMonth} onPress={onOpenMonth} />
       </View>
       <WeekdayHeadings today={today} days={days} />
@@ -230,7 +234,10 @@ export function MonthCalendar({
           {footer}
         </ScrollView>
         <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
-          <Pressable accessibilityRole="button" onPress={() => onMonthChange(today)} hitSlop={6} style={styles.footerButton}>
+          <Pressable accessibilityRole="button" onPress={() => {
+              onMonthChange(today);
+              onSelect(today);
+            }} hitSlop={6} style={styles.footerButton}>
             <AppText variant="bodyStrong" tone="primary">
               {C.today}
             </AppText>
