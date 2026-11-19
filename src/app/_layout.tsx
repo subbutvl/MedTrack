@@ -10,6 +10,7 @@ import { ensureSelfProfile } from '@/db/client';
 import { configureNotifications, requestPermission } from '@/services/notifications';
 import { startReminderEngine } from '@/services/reminders';
 import { LockProvider } from '@/security/LockProvider';
+import { ActivePersonProvider } from '@/state/ActivePerson';
 import { fontAssets, fonts, ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -38,7 +39,6 @@ function RootStack() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="person/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="person/[id]" options={{ title: '' }} />
         <Stack.Screen name="medication/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="meal-times" options={{ title: 'Meal times' }} />
         <Stack.Screen name="doctor/edit" options={{ presentation: 'modal' }} />
@@ -76,7 +76,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <LockProvider>
-          <RootStack />
+          <ActivePersonProvider>
+            <RootStack />
+          </ActivePersonProvider>
         </LockProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -5,7 +5,7 @@
 export const strings = {
   appName: 'MedTrack',
   common: { save: 'Save', cancel: 'Cancel', delete: 'Delete', add: 'Add', edit: 'Edit', remove: 'Remove', optional: 'Optional' },
-  tabs: { today: 'Today', people: 'People', checkups: 'Checkups', settings: 'Settings' },
+  tabs: { today: 'Today', medications: 'Medications', settings: 'Settings' },
   today: {
     title: 'Today',
     emptyTitle: 'No doses scheduled',
@@ -52,6 +52,23 @@ export const strings = {
     noCheckups: 'No checkups yet.',
     health: 'Health',
     deleteConfirm: (name: string) => `Remove ${name} and their medicines?`,
+    switchTitle: 'Show data for',
+    switchHint: 'Today and Medications show only this person.',
+    viewing: 'Viewing',
+    manage: 'Manage people',
+    profiles: 'Profiles',
+    profilesHint: 'Choose whose medicines, checkups and doctors you see. Reminders still come for everyone.',
+  },
+  medications: {
+    title: 'Medications',
+    segments: { medicines: 'Medicines', checkups: 'Checkups', doctors: 'Doctors' },
+    add: { medicines: 'Add medicine', checkups: 'Add checkup', doctors: 'Add doctor' },
+    emptyMedicines: 'No medicines yet',
+    emptyMedicinesBody: 'Tap + to add a medicine.',
+    emptyCheckups: 'No checkups yet',
+    emptyCheckupsBody: 'Tap + to add a recurring checkup or specific dates.',
+    emptyDoctors: 'No doctors yet',
+    emptyDoctorsBody: 'Tap + to add a doctor, so medicines and checkups can link to them.',
   },
   checkups: {
     title: 'Checkups',
