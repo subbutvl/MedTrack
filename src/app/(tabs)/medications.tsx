@@ -9,17 +9,19 @@ import { Card } from '@/components/Card';
 import { CheckupRow } from '@/components/CheckupRow';
 import { CopySearchButton } from '@/components/CopySearchButton';
 import { EmptyState } from '@/components/EmptyState';
+import { HealthLog } from '@/components/HealthLog';
 import { Screen } from '@/components/Screen';
 import { getGlobalMealTimes, listCheckups, listDoctors, listMedications } from '@/db/repo';
 import { localToday } from '@/domain/dates';
 import { describeSchedule } from '@/domain/describe';
+import type { ReadingType } from '@/domain/readings';
 import { useData } from '@/hooks/useData';
 import { strings } from '@/i18n/strings';
 import { displayName, useActivePerson } from '@/state/ActivePerson';
 import { radius, spacing, useTheme } from '@/theme';
 
-type Segment = 'medicines' | 'checkups' | 'doctors';
-const SEGMENTS: Segment[] = ['medicines', 'checkups', 'doctors'];
+type Segment = 'medicines' | 'checkups' | 'doctors' | 'health';
+const SEGMENTS: Segment[] = ['medicines', 'checkups', 'doctors', 'health'];
 const M = strings.medications;
 
 async function load(personId: string) {
@@ -38,6 +40,7 @@ export default function MedicationsScreen() {
   const { person } = useActivePerson();
   const params = useLocalSearchParams<{ segment?: Segment }>();
   const [segment, setSegment] = useState<Segment>(params.segment ?? 'medicines');
+  const [readingType, setReadingType] = useState<ReadingType>('bp');
   // A link that names a segment (such as Today's "Add a medicine") opens that segment.
   useEffect(() => {
     if (params.segment && SEGMENTS.includes(params.segment)) {
@@ -57,7 +60,8 @@ export default function MedicationsScreen() {
     if (!personId) return;
     if (segment === 'medicines') router.push({ pathname: '/medication/edit', params: { personId } });
     else if (segment === 'checkups') router.push({ pathname: '/checkup/edit', params: { personId } });
-    else router.push({ pathname: '/doctor/edit', params: { personId } });
+    else if (segment === 'doctors') router.push({ pathname: '/doctor/edit', params: { personId } });
+    else router.push({ pathname: '/health/add', params: { personId, type: readingType } });
   };
 
   return (
@@ -84,7 +88,7 @@ export default function MedicationsScreen() {
                     onPress={() => setSegment(s)}
                     style={[styles.segmentOption, selected && { backgroundColor: colors.primary }]}
                   >
-                    <AppText variant="bodyStrong" tone={selected ? 'onPrimary' : 'primary'} numberOfLines={1}>
+                    <AppText variant="bodyStrong" tone={selected ? 'onPrimary' : 'primary'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                       {M.segments[s]}
                     </AppText>
                   </Pressable>
@@ -159,6 +163,8 @@ export default function MedicationsScreen() {
             ))
           )
         ) : null}
+
+        {personId && segment === 'health' ? <HealthLog personId={personId} type={readingType} onTypeChange={setReadingType} /> : null}
       </Screen>
 
       <Pressable

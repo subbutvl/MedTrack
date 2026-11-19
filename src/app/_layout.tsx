@@ -43,7 +43,6 @@ function RootStack() {
         <Stack.Screen name="meal-times" options={{ title: 'Meal times' }} />
         <Stack.Screen name="doctor/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="checkup/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="health/[personId]" options={{ title: '' }} />
         <Stack.Screen name="health/add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="app-lock" options={{ title: 'App lock' }} />
         <Stack.Screen name="backup" options={{ title: 'Backup & restore' }} />

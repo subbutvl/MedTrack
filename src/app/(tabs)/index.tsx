@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
@@ -110,20 +110,7 @@ export default function TodayScreen() {
     <Screen
       header={
         <>
-          <View style={styles.headerRow}>
-            <PersonSwitcher />
-            {person ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={strings.health.open}
-                hitSlop={8}
-                onPress={() => router.push({ pathname: '/health/[personId]', params: { personId: person.id } })}
-                style={[styles.iconButton, { backgroundColor: colors.surfaceAlt }]}
-              >
-                <Ionicons name="pulse-outline" size={20} color={colors.primary} />
-              </Pressable>
-            ) : null}
-          </View>
+          <PersonSwitcher />
           <View>
             <AppText variant="label" tone="muted">
               {heading}
@@ -183,8 +170,6 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   section: { gap: spacing.sm },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  iconButton: { width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
   progressTrack: { height: 6, borderRadius: radius.pill, overflow: 'hidden' },
