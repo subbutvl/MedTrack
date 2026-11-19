@@ -34,7 +34,7 @@ function weekTitle(days: ISODate[], today: ISODate) {
   return `${fmt(days[0], { day: 'numeric', month: 'short' })} – ${fmt(days[6], { day: 'numeric', month: 'short' })}`;
 }
 
-function ProgressRing({ size, stroke, progress, color, track }: { size: number; stroke: number; progress: number; color: string; track: string }) {
+export function ProgressRing({ size, stroke, progress, color, track }: { size: number; stroke: number; progress: number; color: string; track: string }) {
   const r = (size - stroke) / 2;
   const circumference = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(1, progress));
@@ -179,66 +179,6 @@ export function WeekStrip({
   );
 }
 
-/**
- * A compact week in the style of Apple Health's summary: a title with the calendar icon, then
- * weekday letters (today's in a filled circle) over a ring per day. Tapping a day calls onSelect.
- */
-export function CompactWeek({
-  title,
-  today,
-  markFor,
-  onSelect,
-  onOpenMonth,
-}: {
-  title: string;
-  today: ISODate;
-  markFor: (d: ISODate) => DayMark | undefined;
-  onSelect: (d: ISODate) => void;
-  onOpenMonth: () => void;
-}) {
-  const { colors } = useTheme();
-  const days = weekOf(today);
-  return (
-    <View style={styles.compact}>
-      <View style={styles.stripHeader}>
-        <AppText variant="title" style={styles.flex} numberOfLines={1}>
-          {title}
-        </AppText>
-        <IconButton icon="calendar-outline" label={C.openMonth} onPress={onOpenMonth} />
-      </View>
-      <View style={styles.weekRow}>
-        {days.map((d, i) => {
-          const mark = markFor(d);
-          const isToday = d === today;
-          return (
-            <Pressable
-              key={d}
-              accessibilityRole="button"
-              accessibilityLabel={[formatDay(d), isToday ? C.today : null, mark?.label].filter(Boolean).join(', ')}
-              onPress={() => onSelect(d)}
-              style={({ pressed }) => [styles.cell, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.letter, isToday && { backgroundColor: colors.primary }]}>
-                <AppText variant="label" tone={isToday ? 'onPrimary' : 'muted'}>
-                  {C.weekdays[i]}
-                </AppText>
-              </View>
-              <View style={[styles.ringBox, { width: 34, height: 34 }]}>
-                <ProgressRing size={34} stroke={4} progress={mark?.progress ?? 0} color={mark?.ringColor ?? colors.accent} track={colors.border} />
-              </View>
-              <View style={styles.dots}>
-                {(mark?.dots ?? []).slice(0, 3).map((c, j) => (
-                  <View key={j} style={[styles.dot, { backgroundColor: c }]} />
-                ))}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 /** The full month of rings, opened from the week strip's calendar icon. Tapping a day picks it. */
 export function MonthCalendar({
   visible,
@@ -343,8 +283,6 @@ export function LegendItem({ color, label, ring }: { color: string; label: strin
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
-  compact: { gap: spacing.xs },
-  letter: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   strip: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, padding: spacing.md, gap: spacing.xs },
   stripHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs },
   todayButton: { paddingHorizontal: spacing.sm, minHeight: 32, justifyContent: 'center' },
@@ -358,7 +296,7 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendRing: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(2, 18, 41, 0.45)' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(10, 37, 64, 0.45)' },
   sheet: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, marginTop: spacing.sm },
   modalHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },

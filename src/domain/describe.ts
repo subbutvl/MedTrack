@@ -29,3 +29,11 @@ export function describeSchedule(s: MedicationSchedule, meals: MealTimes): strin
   else if (s.endDate) parts.push(`Until ${s.endDate}`);
   return parts.join(' · ');
 }
+
+/** How a slot relates to a meal, such as "After breakfast", or undefined for a clock time. */
+export function slotRelation(slot: DoseSlot | undefined): string | undefined {
+  if (!slot || slot.kind === 'clock') return undefined;
+  if (slot.meal === 'bedtime') return 'At bedtime';
+  const rel = slot.relation === 'with' ? 'With' : slot.relation === 'before' ? 'Before' : 'After';
+  return `${rel} ${MEAL[slot.meal]}`;
+}

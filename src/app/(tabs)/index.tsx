@@ -1,37 +1,44 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from 'react-native';
+import { useMemo, useRef } from 'react';
+import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { DoseCard } from '@/components/DoseCard';
+import { DoseCard, type DoseDetails } from '@/components/DoseCard';
 import { PersonSwitcher } from '@/components/PersonSwitcher';
 import { EmptyState } from '@/components/EmptyState';
-import { MedicineCalendar } from '@/components/MedicineCalendar';
+import { MedicineCalendar, type MedicineCalendarHandle } from '@/components/MedicineCalendar';
 import { Screen } from '@/components/Screen';
-import { clearDose, getGlobalMealTimes, listDoseEvents, listMedications, listPeople, listStock, logDose, type DoseRef } from '@/db/repo';
+import { clearDose, getGlobalMealTimes, listDoctors, listDoseEvents, listMedications, listPeople, listStock, logDose, type DoseRef } from '@/db/repo';
+import { slotRelation } from '@/domain/describe';
 import { localToday } from '@/domain/dates';
 import { dailyUse } from '@/domain/schedule';
 import { forecastStock } from '@/domain/stock';
-import { buildTimeline, sectionFor, type TimelineItem } from '@/domain/timeline';
+import { buildTimeline, formatMinute, sectionFor, type TimelineItem } from '@/domain/timeline';
 import { useData, useMinuteTick } from '@/hooks/useData';
 import { strings } from '@/i18n/strings';
 import { scheduleSnooze } from '@/services/reminders';
 import { useActivePerson } from '@/state/ActivePerson';
-import { spacing, useTheme } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
 const SNOOZE_OPTIONS = [10, 30, 60];
 
 async function loadToday(date: string, personId: string | undefined) {
-  const [people, meds, events, stock, globalMeals] = await Promise.all([
+  const [people, meds, events, stock, globalMeals, doctors] = await Promise.all([
     listPeople(),
     listMedications(),
     listDoseEvents(date),
     listStock(),
     getGlobalMealTimes(),
+    listDoctors(),
   ]);
+  const doctorName = new Map(doctors.map((d) => [d.id, d.name]));
+  // What each dose card shows besides the timeline: the form, the doctor and the meal relation.
+  const medInfo = new Map(
+    meds.map((m) => [m.id, { form: m.form, doctor: m.doctorId ? doctorName.get(m.doctorId) ?? null : null, slots: m.schedule.slots }]),
+  );
   const people_ = new Map(people.map((p) => [p.id, p]));
   const timelineMeds = meds
     .filter((m) => m.active && people_.has(m.personId) && m.personId === personId)
@@ -56,7 +63,7 @@ async function loadToday(date: string, personId: string | undefined) {
     })
     .filter((x) => x.low);
 
-  return { personId, people: people_, timelineMeds, events, lowStock };
+  return { personId, people: people_, timelineMeds, events, lowStock, medInfo };
 }
 
 export default function TodayScreen() {
@@ -86,11 +93,13 @@ export default function TodayScreen() {
 
   const refOf = (i: TimelineItem): DoseRef => ({ medicationId: i.medicationId, date: i.date, minute: i.minute, slotIndex: i.slotIndex, amount: i.amount });
 
+  const snoozeFor = async (item: TimelineItem, minutes: number) => {
+    await logDose(refOf(item), 'snoozed', { snoozedUntilMinute: nowMinute + minutes });
+    await scheduleSnooze(item.medicationId, item.date, item.slotIndex, minutes);
+  };
+
   const snooze = (item: TimelineItem) => {
-    const apply = async (minutes: number) => {
-      await logDose(refOf(item), 'snoozed', { snoozedUntilMinute: nowMinute + minutes });
-      await scheduleSnooze(item.medicationId, item.date, item.slotIndex, minutes);
-    };
+    const apply = (minutes: number) => snoozeFor(item, minutes);
     const labels = SNOOZE_OPTIONS.map((m) => `${m} minutes`);
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -105,22 +114,61 @@ export default function TodayScreen() {
     }
   };
 
-  const heading = `${strings.today.title}, ${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const taken = timeline.filter((t) => t.status === 'taken').length;
+  // The soonest dose still to take today gets the larger "Next up" card.
+  const nextUp = timeline.find((t) => t.status !== 'taken' && t.status !== 'skipped' && t.status !== 'missed');
+  const calendar = useRef<MedicineCalendarHandle>(null);
+
+  const title = `${strings.today.title}, ${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+  const weekdayName = now.toLocaleDateString('en-IN', { weekday: 'long' });
+
+  const detailsFor = (item: TimelineItem): DoseDetails => {
+    const info = data?.medInfo.get(item.medicationId);
+    return { form: info?.form, doctor: info?.doctor, when: slotRelation(info?.slots[item.slotIndex]) };
+  };
 
   return (
     <Screen
       header={
         <>
-          <PersonSwitcher />
-          {data && person ? <MedicineCalendar personId={person.id} title={heading} meds={data.timelineMeds} /> : null}
-          {timeline.length > 0 ? (
-            <AppText tone="muted">{done === timeline.length ? strings.today.allDone : strings.today.progress(done, timeline.length)}</AppText>
+          <View style={styles.topRow}>
+            <View style={styles.shrink}>
+              <PersonSwitcher />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.today.openCalendar}
+              onPress={() => calendar.current?.openMonth()}
+              hitSlop={6}
+              style={({ pressed }) => [styles.roundButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Ionicons name="calendar-outline" size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+          <View style={styles.titleRow}>
+            <View style={styles.flex}>
+              <AppText variant="display" style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {title}
+              </AppText>
+              <AppText tone="muted">{weekdayName}</AppText>
+            </View>
+            {timeline.length > 0 ? (
+              <View style={[styles.takenPill, { backgroundColor: colors.successSoft, borderColor: colors.success }]}>
+                <View style={[styles.dot, { backgroundColor: colors.success }]} />
+                <AppText variant="caption" tone="success" style={styles.bold}>
+                  {strings.today.takenPill(taken, timeline.length)}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+          {data && person ? (
+            <MedicineCalendar ref={calendar} personId={person.id} meds={data.timelineMeds} todayDone={done} todayTotal={timeline.length} />
           ) : null}
         </>
       }
     >
       {data?.lowStock.map(({ stock, daysLeft }) => (
-        <Card key={stock.id} style={{ borderColor: colors.warning }}>
+        <Card key={stock.id} style={{ borderColor: colors.warning, backgroundColor: colors.warningSoft }}>
           <View style={styles.row}>
             <Ionicons name="warning-outline" size={20} color={colors.warning} />
             <AppText tone="warning" style={styles.flex}>
@@ -137,29 +185,71 @@ export default function TodayScreen() {
         </>
       ) : null}
 
-      {sections.map(([section, items]) => (
-        <View key={section} style={styles.section}>
-          <AppText variant="label" tone="muted">
-            {strings.today.sections[section]}
-          </AppText>
-          {items.map((item) => (
-            <DoseCard
-              key={item.key}
-              item={item}
-              onTaken={() => void logDose(refOf(item), 'taken')}
-              onSkip={() => void logDose(refOf(item), 'skipped')}
-              onSnooze={() => snooze(item)}
-              onUndo={() => void clearDose(refOf(item))}
-            />
-          ))}
-        </View>
-      ))}
+      {sections.map(([section, items]) => {
+        const sectionDone = items.filter((i) => i.status === 'taken' || i.status === 'skipped').length;
+        const pending = items.length - sectionDone;
+        const complete = pending === 0;
+        const icon = SECTION_ICON[section];
+        return (
+          <View key={section} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIcon, { backgroundColor: section === 'morning' ? colors.warningSoft : colors.accentSoft }]}>
+                <Ionicons name={icon} size={16} color={section === 'morning' ? colors.warning : colors.accent} />
+              </View>
+              <AppText variant="label" style={[styles.sectionLabel, { color: colors.text }]}>
+                {strings.today.sections[section].toUpperCase()}
+              </AppText>
+              <AppText variant="caption" tone="muted" style={styles.flex} numberOfLines={1}>
+                •  {formatMinute(items[0].minute)}
+              </AppText>
+              <View style={[styles.sectionPill, { backgroundColor: complete ? colors.successSoft : colors.warningSoft }]}>
+                {!complete ? <View style={[styles.dot, { backgroundColor: colors.warning }]} /> : null}
+                <AppText variant="caption" style={[styles.bold, { color: complete ? colors.success : colors.warning }]}>
+                  {complete ? strings.today.sectionDone(sectionDone, items.length) : strings.today.sectionPending(pending)}
+                </AppText>
+              </View>
+            </View>
+            {items.map((item) => (
+              <DoseCard
+                key={item.key}
+                item={item}
+                details={detailsFor(item)}
+                nextUp={item.key === nextUp?.key}
+                onTaken={() => void logDose(refOf(item), 'taken')}
+                onSkip={() => void logDose(refOf(item), 'skipped')}
+                onSnooze={() => snooze(item)}
+                onSnoozeFor={(m) => void snoozeFor(item, m)}
+                onUndo={() => void clearDose(refOf(item))}
+              />
+            ))}
+          </View>
+        );
+      })}
     </Screen>
   );
 }
 
+const SECTION_ICON = {
+  morning: 'sunny-outline',
+  afternoon: 'partly-sunny-outline',
+  evening: 'moon-outline',
+  night: 'bed-outline',
+} as const;
+
 const styles = StyleSheet.create({
-  section: { gap: spacing.sm },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'space-between' },
+  shrink: { flexShrink: 1 },
+  roundButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  title: { fontSize: 28, lineHeight: 34 },
+  takenPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  bold: { fontWeight: '700' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  sectionIcon: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  sectionLabel: { letterSpacing: 0.8 },
+  sectionPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.sm },
+  section: { gap: spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   flex: { flex: 1 },
 });

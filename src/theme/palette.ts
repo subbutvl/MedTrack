@@ -1,22 +1,25 @@
 /**
- * "Soft Medical Professional Blue" palette, the brand source of truth.
+ * The MedTrack design system palette, the brand source of truth.
  * Do not use these directly in components. Use the semantic tokens in `colors.ts`.
  */
 export const palette = {
-  deepBlue: '#021229',
-  darkBlue: '#05477F',
-  vibrantBlue: '#4196F7',
-  softBlue: '#BAD8FC',
-  paleBlue: '#DFEDFE',
+  /** Primary: deep navy for headings, filled buttons and the active state. */
+  primary: '#0A2540',
+  /** Secondary: green for taken, completed and success. */
+  secondary: '#059669',
+  /** Tertiary: bright blue for highlights, chips and progress. */
+  tertiary: '#2563EB',
+  /** Neutral: near-black slate for body text. */
+  neutral: '#0F172A',
   white: '#FFFFFF',
 } as const;
 
-/** Semantic status hues (not part of the brand palette), tuned for both themes. */
+/** Semantic status hues, tuned for both themes. */
 export const status = {
-  successLight: '#1B7F57',
-  successDark: '#5FD3A2',
-  warningLight: '#9A5B00',
-  warningDark: '#F5B85C',
-  dangerLight: '#B3261E',
-  dangerDark: '#F2827B',
+  successLight: '#059669',
+  successDark: '#34D399',
+  warningLight: '#D97706',
+  warningDark: '#FBBF24',
+  dangerLight: '#DC2626',
+  dangerDark: '#F87171',
 } as const;
