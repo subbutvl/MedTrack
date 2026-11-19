@@ -11,7 +11,7 @@ import { localToday } from '@/domain/dates';
 import { strings } from '@/i18n/strings';
 import { radius, spacing, useTheme } from '@/theme';
 import { AppText } from './AppText';
-import { formatDay, LegendItem, MonthCalendar, WeekStrip, type DayMark } from './Calendar';
+import { CompactWeek, formatDay, LegendItem, MonthCalendar, type DayMark } from './Calendar';
 
 const C = strings.calendar;
 
@@ -26,10 +26,10 @@ const STATUS_ICON: Record<DoseStatus, keyof typeof Ionicons.glyphMap> = {
 };
 
 /**
- * Week rings for one person's doses. Tapping a day or the calendar icon opens the full month,
+ * This week's dose rings under a title. Tapping a day or the calendar icon opens the full month,
  * which shows the chosen day's doses.
  */
-export function MedicineCalendar({ personId, meds: timelineMeds }: { personId: string; meds: TimelineMedication[] }) {
+export function MedicineCalendar({ personId, title, meds: timelineMeds }: { personId: string; title: string; meds: TimelineMedication[] }) {
   const { colors } = useTheme();
   const now = useMinuteTick();
   const today = localToday(now);
@@ -38,7 +38,7 @@ export function MedicineCalendar({ personId, meds: timelineMeds }: { personId: s
   const [month, setMonth] = useState<ISODate | null>(null);
 
   // Load the log for the visible week, plus the visible month while it is open.
-  const week = weekOf(selected);
+  const week = weekOf(today);
   const grid = month ? monthGridRange(month) : null;
   const from = grid && grid.from < week[0] ? grid.from : week[0];
   const to = grid && grid.to > week[6] ? grid.to : week[6];
@@ -108,15 +108,14 @@ export function MedicineCalendar({ personId, meds: timelineMeds }: { personId: s
 
   return (
     <View>
-      <WeekStrip
-        selected={selected}
+      <CompactWeek
+        title={title}
         today={today}
         markFor={markFor}
         onSelect={(d) => {
           setSelected(d);
           setMonth(d);
         }}
-        onNavigate={setSelected}
         onOpenMonth={() => setMonth(selected)}
       />
       <MonthCalendar
