@@ -3,9 +3,11 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { Avatar } from '@/components/Avatar';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { strings } from '@/i18n/strings';
+import { displayName, useActivePerson } from '@/state/ActivePerson';
 import { radius, spacing, useTheme, type ThemePreference } from '@/theme';
 
 const options: { value: ThemePreference; label: string }[] = [
@@ -16,9 +18,59 @@ const options: { value: ThemePreference; label: string }[] = [
 
 export default function SettingsScreen() {
   const { colors, preference, setPreference } = useTheme();
+  const { people, person, setActive } = useActivePerson();
 
   return (
     <Screen header={<AppText variant="display">{strings.settings.title}</AppText>}>
+
+      <Card>
+        <AppText variant="label" tone="muted">
+          {strings.people.profiles}
+        </AppText>
+        <AppText variant="caption" tone="muted">
+          {strings.people.profilesHint}
+        </AppText>
+        <View accessibilityRole="radiogroup" style={styles.people}>
+          {people.map((p) => {
+            const selected = p.id === person?.id;
+            return (
+              <View key={p.id} style={[styles.personRow, selected && { backgroundColor: colors.surfaceAlt }]}>
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  onPress={() => void setActive(p.id)}
+                  style={styles.personMain}
+                >
+                  <Ionicons
+                    name={selected ? 'radio-button-on' : 'radio-button-off'}
+                    size={22}
+                    color={selected ? colors.primary : colors.textMuted}
+                  />
+                  <Avatar name={displayName(p)} color={p.color} size={36} />
+                  <AppText variant="bodyStrong" style={styles.flex} numberOfLines={1}>
+                    {displayName(p)}
+                  </AppText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${strings.common.edit} ${displayName(p)}`}
+                  hitSlop={8}
+                  onPress={() => router.push({ pathname: '/person/edit', params: { id: p.id } })}
+                  style={styles.editButton}
+                >
+                  <Ionicons name="create-outline" size={20} color={colors.primary} />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/person/edit')} style={styles.addPerson} hitSlop={6}>
+          <Ionicons name="person-add-outline" size={18} color={colors.primary} />
+          <AppText variant="bodyStrong" tone="primary">
+            {strings.people.add}
+          </AppText>
+        </Pressable>
+      </Card>
 
       <Card>
         <AppText variant="label" tone="muted">
@@ -82,4 +134,9 @@ const styles = StyleSheet.create({
   option: { flex: 1, minHeight: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   flex: { flex: 1 },
+  people: { gap: spacing.xs, marginTop: spacing.xs },
+  personRow: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, minHeight: 52 },
+  personMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.sm },
+  editButton: { padding: spacing.md },
+  addPerson: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start', paddingVertical: spacing.sm },
 });

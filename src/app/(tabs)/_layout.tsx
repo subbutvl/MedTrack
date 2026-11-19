@@ -30,8 +30,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={tab(strings.tabs.today, 'today-outline', 'today')} />
-      <Tabs.Screen name="people" options={tab(strings.tabs.people, 'people-outline', 'people')} />
-      <Tabs.Screen name="checkups" options={tab(strings.tabs.checkups, 'calendar-outline', 'calendar')} />
+      <Tabs.Screen name="medications" options={tab(strings.tabs.medications, 'medkit-outline', 'medkit')} />
       <Tabs.Screen name="settings" options={tab(strings.tabs.settings, 'settings-outline', 'settings')} />
     </Tabs>
   );

@@ -74,7 +74,7 @@ export default function EditPersonScreen() {
         style: 'destructive',
         onPress: async () => {
           await deletePerson(id!);
-          router.dismissTo('/people');
+          router.back();
         },
       },
     ]);
