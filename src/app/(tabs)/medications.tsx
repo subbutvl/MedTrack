@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,16 +29,27 @@ async function load(personId: string) {
     listCheckups(personId),
     listDoctors(personId),
   ]);
-  return { meds, global, checkups, doctors };
+  return { personId, meds, global, checkups, doctors };
 }
 
 export default function MedicationsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { person } = useActivePerson();
-  const [segment, setSegment] = useState<Segment>('medicines');
+  const params = useLocalSearchParams<{ segment?: Segment }>();
+  const [segment, setSegment] = useState<Segment>(params.segment ?? 'medicines');
+  // A link that names a segment (such as Today's "Add a medicine") opens that segment.
+  useEffect(() => {
+    if (params.segment && SEGMENTS.includes(params.segment)) {
+      setSegment(params.segment);
+      // Clear it so the same link works again after the user switches segments.
+      router.setParams({ segment: undefined });
+    }
+  }, [params.segment]);
   const personId = person?.id ?? '';
-  const { data } = useData(() => (personId ? load(personId) : Promise.resolve(undefined)), [personId]);
+  const { data: loaded } = useData(() => (personId ? load(personId) : Promise.resolve(undefined)), [personId]);
+  // While a newly chosen profile loads, show nothing rather than the previous person's lists.
+  const data = loaded && loaded.personId === personId ? loaded : undefined;
   const meals = person?.mealTimes ?? data?.global;
   const today = localToday();
 
