@@ -55,7 +55,7 @@ async function loadToday(date: string, personId: string | undefined) {
     })
     .filter((x) => x.low);
 
-  return { people: people_, timelineMeds, events, lowStock };
+  return { personId, people: people_, timelineMeds, events, lowStock };
 }
 
 export default function TodayScreen() {
@@ -64,7 +64,9 @@ export default function TodayScreen() {
   const date = localToday(now);
   const nowMinute = now.getHours() * 60 + now.getMinutes();
   const { person } = useActivePerson();
-  const { data } = useData(() => loadToday(date, person?.id), [date, person?.id]);
+  const { data: loaded } = useData(() => loadToday(date, person?.id), [date, person?.id]);
+  // While a newly chosen profile loads, show nothing rather than the previous person's doses.
+  const data = loaded && loaded.personId === person?.id ? loaded : undefined;
 
   const timeline = useMemo(
     () => (data ? buildTimeline(data.timelineMeds, data.events, date, nowMinute) : []),
@@ -154,7 +156,7 @@ export default function TodayScreen() {
       {data && timeline.length === 0 ? (
         <>
           <EmptyState icon="medkit-outline" title={strings.today.emptyTitle} body={strings.today.emptyBody} />
-          <Button label={strings.today.addMedicine} onPress={() => router.navigate('/medications')} />
+          <Button label={strings.today.addMedicine} onPress={() => router.navigate({ pathname: '/medications', params: { segment: 'medicines' } })} />
         </>
       ) : null}
 
